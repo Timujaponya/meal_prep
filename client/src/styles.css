@@ -1,0 +1,206 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", sans-serif;
+  background: #f8f2e8;
+}
+
+.atmosphere {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 10% 20%, rgba(219, 92, 49, 0.18), transparent 30%),
+    radial-gradient(circle at 85% 12%, rgba(20, 95, 83, 0.15), transparent 25%),
+    linear-gradient(165deg, rgba(255, 255, 255, 0.7), rgba(233, 223, 210, 0.35));
+  z-index: 0;
+}
+
+.kicker {
+  margin: 0 0 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-size: 0.76rem;
+  color: rgba(18, 18, 18, 0.7);
+}
+
+.panel {
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(18, 18, 18, 0.08);
+  border-radius: 22px;
+  padding: 18px;
+  background: rgba(248, 242, 232, 0.82);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 20px 35px rgba(18, 18, 18, 0.08);
+  animation: fadeIn 400ms ease-out;
+}
+
+.panel-title {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.ingredient-toolbar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.field span {
+  font-weight: 600;
+  color: rgba(18, 18, 18, 0.75);
+}
+
+.field input,
+.field select {
+  border: 1px solid rgba(18, 18, 18, 0.14);
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  font-family: "Space Grotesk", sans-serif;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(18, 18, 18, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.65);
+  padding: 9px 10px;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 12px rgba(18, 18, 18, 0.08);
+}
+
+.food-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgba(18, 18, 18, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.64);
+  padding: 9px 10px;
+}
+
+.food-row-active {
+  border-color: rgba(20, 95, 83, 0.5);
+  background: rgba(20, 95, 83, 0.08);
+}
+
+.remove-food-btn {
+  border: 1px solid rgba(18, 18, 18, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  color: rgba(18, 18, 18, 0.78);
+  font-size: 0.72rem;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.remove-food-btn:hover {
+  background: rgba(219, 92, 49, 0.16);
+  border-color: rgba(219, 92, 49, 0.4);
+}
+
+.add-food-form {
+  margin-top: 16px;
+  border-top: 1px dashed rgba(18, 18, 18, 0.2);
+  padding-top: 14px;
+}
+
+.generate-btn,
+.swap-btn {
+  border: none;
+  cursor: pointer;
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+}
+
+.generate-btn {
+  border-radius: 999px;
+  background: linear-gradient(130deg, #db5c31, #a13e1d);
+  color: #fff;
+  padding: 12px 20px;
+  letter-spacing: 0.03em;
+  box-shadow: 0 12px 22px rgba(161, 62, 29, 0.34);
+}
+
+.generate-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.meal-card {
+  position: relative;
+  z-index: 1;
+  border-radius: 22px;
+  border: 1px solid rgba(18, 18, 18, 0.12);
+  background: rgba(255, 255, 255, 0.7);
+  padding: 18px;
+  box-shadow: 0 18px 30px rgba(18, 18, 18, 0.09);
+  animation: riseIn 450ms ease-out;
+}
+
+.swap-btn {
+  border-radius: 10px;
+  background: rgba(20, 95, 83, 0.12);
+  color: #145f53;
+  padding: 8px 11px;
+}
+
+.swap-btn:hover {
+  background: rgba(20, 95, 83, 0.2);
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 760px) {
+  .food-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
