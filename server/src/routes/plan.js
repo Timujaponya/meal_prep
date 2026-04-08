@@ -1,36 +1,43 @@
 import { Router } from "express";
-import { createFoodItem, foodItems, removeFoodItemById } from "../data/foods.js";
+import { createFoodItem, getFoodsByIds, listFoods, removeFoodItemById } from "../data/foods.js";
 import { buildMealPlan, swapMealItem } from "../lib/generator.js";
 import { dailyMacroTargets, estimateCalories, roundMacros } from "../lib/macros.js";
 
 const planRouter = Router();
 
-planRouter.get("/foods", (_req, res) => {
-  res.json({ foods: foodItems });
+planRouter.get("/foods", async (_req, res) => {
+  try {
+    const foods = await listFoods();
+    res.json({ foods });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
-planRouter.post("/foods", (req, res) => {
+planRouter.post("/foods", async (req, res) => {
   try {
-    const nextFood = createFoodItem(req.body);
-    res.status(201).json({ food: nextFood, foods: foodItems });
+    const nextFood = await createFoodItem(req.body);
+    const foods = await listFoods();
+    res.status(201).json({ food: nextFood, foods });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 });
 
-planRouter.delete("/foods/:foodId", (req, res) => {
+planRouter.delete("/foods/:foodId", async (req, res) => {
   try {
-    const removed = removeFoodItemById(req.params.foodId);
-    res.json({ removed, foods: foodItems });
+    const removed = await removeFoodItemById(req.params.foodId);
+    const foods = await listFoods();
+    res.json({ removed, foods });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 });
 
-planRouter.post("/generate", (req, res) => {
+planRouter.post("/generate", async (req, res) => {
   try {
     const { profile = {}, selectedFoodIds = [], mealCount = 4 } = req.body ?? {};
-    const chosenFoods = foodItems.filter((food) => selectedFoodIds.includes(food.id));
+    const chosenFoods = await getFoodsByIds(selectedFoodIds);
 
     const calories =
       profile.calorieMode === "auto"
@@ -62,10 +69,10 @@ planRouter.post("/generate", (req, res) => {
   }
 });
 
-planRouter.post("/swap", (req, res) => {
+planRouter.post("/swap", async (req, res) => {
   try {
     const { meal, slotType, selectedFoodIds = [] } = req.body ?? {};
-    const chosenFoods = foodItems.filter((food) => selectedFoodIds.includes(food.id));
+    const chosenFoods = await getFoodsByIds(selectedFoodIds);
 
     const swappedMeal = swapMealItem({ meal, slotType, selectedFoods: chosenFoods });
     res.json({ meal: swappedMeal });

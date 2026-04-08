@@ -3,6 +3,7 @@ import express from "express";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { closeFoodStore, initializeFoodStore, isDatabaseEnabled } from "./data/foods.js";
 import { planRouter } from "./routes/plan.js";
 
 const app = express();
@@ -34,6 +35,23 @@ if (fs.existsSync(clientIndexPath)) {
   });
 }
 
-app.listen(port, () => {
-  console.log(`Meal Prep API listening on http://localhost:${port}`);
+async function start() {
+  await initializeFoodStore();
+
+  app.listen(port, () => {
+    const mode = isDatabaseEnabled() ? "PostgreSQL" : "memory";
+    console.log(`Meal Prep API listening on http://localhost:${port} (${mode} mode)`);
+  });
+}
+
+start().catch((error) => {
+  console.error("Server startup failed:", error);
+  process.exit(1);
 });
+
+for (const signal of ["SIGINT", "SIGTERM"]) {
+  process.on(signal, async () => {
+    await closeFoodStore();
+    process.exit(0);
+  });
+}

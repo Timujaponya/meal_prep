@@ -6,7 +6,7 @@ Meal Forge, secilen malzemelere ve kalori hedefine gore otomatik ogun ureten mod
 
 - Frontend: React + Vite + Tailwind
 - Backend: Node.js + Express
-- Veri: JSON seed (MVP) / sonraki asama Supabase veya PostgreSQL
+- Veri: PostgreSQL (DATABASE_URL varsa) / fallback memory mode
 
 ## Ozellikler
 
@@ -33,6 +33,12 @@ Not: Frontend API cagrilari varsayilan olarak `/api` uzerinden gider. Lokal geli
 3. Railway otomatik olarak `railway.json` dosyasini kullanir.
 4. Deploy sonunda tek URL uzerinden hem UI hem API calisir.
 
+Kalici veri icin:
+
+1. Railway projesine PostgreSQL ekle (Add Service -> Database -> PostgreSQL).
+2. Backend servisine `DATABASE_URL` degiskenini bagla.
+3. Uygulama acilista `foods` tablosunu otomatik olusturur ve tablo bossa seed verileri ekler.
+
 Varsayilan komutlar:
 
 - Build: `npm install && npm run build`
@@ -42,6 +48,7 @@ Ortam degiskenleri:
 
 - `PORT` Railway tarafindan otomatik verilir.
 - `VITE_API_URL` tanimlaman gerekmez (same-origin `/api` kullaniyor).
+- `DATABASE_URL` verilirse malzeme verisi PostgreSQL'e kalici yazilir.
 
 Kontrol:
 
@@ -58,4 +65,4 @@ Kontrol:
 
 ## Not
 
-Bu MVP versiyonunda veri katmani bellek ici calisir. Uygulama acikken eklenen/silinen malzemeler planlamaya dahil edilir, sunucu yeniden baslayinca sifirlanir. Urunlestirme asamasinda Supabase/PostgreSQL baglantisi eklenebilir.
+`DATABASE_URL` yoksa uygulama memory mode'da calisir ve restartta malzeme verileri sifirlanir. `DATABASE_URL` varsa malzeme CRUD islemleri PostgreSQL'e kalici yazilir.
