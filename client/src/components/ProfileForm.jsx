@@ -1,8 +1,8 @@
 export default function ProfileForm({ profile, onChange, mealCount, onMealCountChange }) {
   return (
-    <section className="panel">
+    <section className="panel panel-glass">
       <h2 className="panel-title">Kullanici Profili</h2>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="form-grid">
         <label className="field">
           <span>Kilo (kg)</span>
           <input
@@ -23,7 +23,7 @@ export default function ProfileForm({ profile, onChange, mealCount, onMealCountC
           />
         </label>
 
-        <label className="field col-span-2">
+        <label className="field field-full">
           <span>Hedef</span>
           <select value={profile.goal} onChange={(event) => onChange("goal", event.target.value)}>
             <option value="cut">Cut</option>
@@ -32,7 +32,7 @@ export default function ProfileForm({ profile, onChange, mealCount, onMealCountC
           </select>
         </label>
 
-        <label className="field col-span-2">
+        <label className="field field-full">
           <span>Kalori Modu</span>
           <select value={profile.calorieMode} onChange={(event) => onChange("calorieMode", event.target.value)}>
             <option value="auto">Otomatik Hesapla</option>
@@ -41,7 +41,7 @@ export default function ProfileForm({ profile, onChange, mealCount, onMealCountC
         </label>
 
         {profile.calorieMode === "manual" ? (
-          <label className="field col-span-2">
+          <label className="field field-full">
             <span>Gunluk Kalori</span>
             <input
               type="number"
@@ -52,7 +52,7 @@ export default function ProfileForm({ profile, onChange, mealCount, onMealCountC
           </label>
         ) : null}
 
-        <label className="field col-span-2">
+        <label className="field field-full">
           <span>Ogun Sayisi</span>
           <input
             type="number"

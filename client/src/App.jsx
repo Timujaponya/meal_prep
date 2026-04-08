@@ -58,6 +58,25 @@ export default function App() {
     [foods, selectedFoodIds]
   );
 
+  const selectedCount = selectedFoodIds.length;
+  const featuredMeals = plan?.meals?.slice(0, 3) ?? [];
+
+  const visualCards = featuredMeals.length
+    ? featuredMeals.map((meal) => {
+        const protein = meal.items.find((item) => item.type === "protein")?.name || "Protein";
+        const carb = meal.items.find((item) => item.type === "carb")?.name || "Carb";
+        return {
+          title: meal.title,
+          subtitle: `${protein} + ${carb}`,
+          meta: `${meal.macros.calories} kcal`
+        };
+      })
+    : [
+        { title: "Awake Plan", subtitle: "High Protein Flow", meta: "Balanced" },
+        { title: "Best Day", subtitle: "Lean + Carb Sync", meta: "Cut Mode" },
+        { title: "Beautiful", subtitle: "Premium Macro Mix", meta: "Smart" }
+      ];
+
   function handleProfileChange(key, value) {
     setProfile((current) => ({ ...current, [key]: value }));
   }
@@ -167,24 +186,107 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-screen bg-cream text-ink">
+    <main className="app-shell">
       <div className="atmosphere" />
 
-      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8 md:py-12">
-        <header className="mb-8 flex flex-wrap items-end justify-between gap-3">
-          <div>
+      <div className="app-layout">
+        <aside className="side-rail panel-glass">
+          <div className="brand-block">
             <p className="kicker">Meal Planner + Macro Engine</p>
-            <h1 className="font-display text-4xl leading-none md:text-6xl">Meal Forge</h1>
+            <h1 className="brand-title">Meal Forge</h1>
+            <p className="brand-copy">Premium planlama paneli ile ogunlerini hizli ve dengeli kur.</p>
           </div>
-          <button className="generate-btn" disabled={loading || !canGenerate} onClick={generatePlan}>
+
+          <nav className="rail-nav">
+            <button type="button" className="rail-nav-item is-active">Workspace</button>
+            <button type="button" className="rail-nav-item">Ingredients</button>
+            <button type="button" className="rail-nav-item">Macro View</button>
+            <button type="button" className="rail-nav-item">Swap Assistant</button>
+          </nav>
+
+          <div className="rail-stats">
+            <article className="rail-stat stat-green">
+              <span>Secilen</span>
+              <strong>{selectedCount}</strong>
+            </article>
+            <article className="rail-stat stat-blue">
+              <span>Ogun</span>
+              <strong>{mealCount}</strong>
+            </article>
+            <article className="rail-stat stat-orange">
+              <span>Hedef</span>
+              <strong>{profile.goal}</strong>
+            </article>
+            <article className="rail-stat stat-purple">
+              <span>Kalori</span>
+              <strong>{profile.calorieMode === "manual" ? profile.calories : "auto"}</strong>
+            </article>
+          </div>
+
+          <button className="generate-btn rail-generate" disabled={loading || !canGenerate} onClick={generatePlan}>
             {loading ? "Hesaplaniyor..." : "Plan Olustur"}
           </button>
-        </header>
+        </aside>
 
-        {error ? <p className="mb-4 rounded-lg bg-red-100 px-4 py-3 text-red-800">{error}</p> : null}
+        <section className="main-stage">
+          <header className="topbar panel-glass">
+            <div>
+              <p className="hero-kicker">Smart Nutrition Console</p>
+              <h2 className="hero-title">Meal Studio</h2>
+            </div>
 
-        <section className="grid gap-4 lg:grid-cols-[380px_1fr]">
-          <div className="space-y-4">
+            <div className="topbar-actions">
+              <button type="button" className="icon-action" aria-label="notifications">•</button>
+              <button type="button" className="icon-action" aria-label="analytics">◦</button>
+              <button type="button" className="icon-action" aria-label="settings">◌</button>
+            </div>
+          </header>
+
+          <section className="feature-strip">
+            {visualCards.map((card, index) => (
+              <article key={`${card.title}_${index}`} className={`feature-card feature-tone-${index % 3}`}>
+                <div className="feature-overlay" />
+                <p className="feature-kicker">Featured</p>
+                <h3 className="feature-title">{card.title}</h3>
+                <p className="feature-subtitle">{card.subtitle}</p>
+                <span className="feature-meta">{card.meta}</span>
+              </article>
+            ))}
+          </section>
+
+          <header className="hero-panel panel-glass">
+            <div>
+              <p className="hero-kicker">Plan Studio</p>
+              <h2 className="hero-title">Modular Meal Intelligence</h2>
+              <p className="hero-copy">
+                Malzeme sec, hedefini belirle, sistem otomatik ogun kombinlerini optimize etsin.
+              </p>
+            </div>
+
+            <div className="hero-metrics">
+              <article className="metric-chip chip-green">
+                <span>Protein</span>
+                <strong>{plan?.dailyTarget?.protein ? `${Math.round(plan.dailyTarget.protein)}g` : "--"}</strong>
+              </article>
+              <article className="metric-chip chip-blue">
+                <span>Carb</span>
+                <strong>{plan?.dailyTarget?.carb ? `${Math.round(plan.dailyTarget.carb)}g` : "--"}</strong>
+              </article>
+              <article className="metric-chip chip-orange">
+                <span>Fat</span>
+                <strong>{plan?.dailyTarget?.fat ? `${Math.round(plan.dailyTarget.fat)}g` : "--"}</strong>
+              </article>
+              <article className="metric-chip chip-purple">
+                <span>Calories</span>
+                <strong>{plan?.dailyTarget?.calories || "--"}</strong>
+              </article>
+            </div>
+          </header>
+
+          {error ? <p className="error-banner">{error}</p> : null}
+
+          <section className="workspace-grid">
+            <div className="workspace-left">
             <ProfileForm
               profile={profile}
               onChange={handleProfileChange}
@@ -199,14 +301,14 @@ export default function App() {
               onRemoveFood={handleRemoveFood}
               busy={ingredientBusy}
             />
-            <MacroSummary totals={plan?.totals} target={plan?.dailyTarget} />
-          </div>
+            </div>
 
-          <div className="space-y-4">
+            <div className="workspace-right">
+              <MacroSummary totals={plan?.totals} target={plan?.dailyTarget} />
             {!plan ? (
-              <section className="panel h-full min-h-[360px]">
+                <section className="panel empty-panel">
                 <h2 className="panel-title">Plan Ciktisi</h2>
-                <p className="text-ink/70">
+                  <p className="panel-copy">
                   Sag tarafta ogun kartlarini gormek icin once soldan malzemelerini sec ve plan olustur.
                 </p>
               </section>
@@ -214,6 +316,7 @@ export default function App() {
               plan.meals.map((meal) => <MealCard key={meal.id} meal={meal} onSwap={handleSwap} />)
             )}
           </div>
+          </section>
         </section>
       </div>
     </main>
