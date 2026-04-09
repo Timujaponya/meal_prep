@@ -14,7 +14,13 @@ import {
   updateDashboardMeal
 } from "../data/dashboardMeals.js";
 import { listRecipeCatalog } from "../data/recipes.js";
-import { getInventoryMap, listUserInventory, upsertInventoryItem } from "../data/inventory.js";
+import {
+  deleteInventoryRowsByFoodId,
+  getInventoryMap,
+  incrementInventoryItem,
+  listUserInventory,
+  upsertInventoryItem
+} from "../data/inventory.js";
 import { analyzeCheckout, normalizeCartItems } from "../lib/checkout.js";
 import { createFoodItem, getFoodsByIds, listFoods, removeFoodItemById, updateFoodItem } from "../data/foods.js";
 import { buildMealPlan, swapMealItem } from "../lib/generator.js";
@@ -108,6 +114,7 @@ planRouter.post("/foods", requireRole("admin"), async (req, res) => {
 planRouter.delete("/foods/:foodId", requireRole("admin"), async (req, res) => {
   try {
     const removed = await removeFoodItemById(req.params.foodId);
+    await deleteInventoryRowsByFoodId(req.params.foodId);
     const foods = await listFoods();
     res.json({ removed, foods });
   } catch (error) {
@@ -202,7 +209,12 @@ planRouter.post("/inventory", async (req, res) => {
   try {
     const foodId = String(req.body?.foodId || "").trim();
     const amountGrams = Number(req.body?.amountGrams || 0);
-    await upsertInventoryItem({
+    const foodExists = (await getFoodsByIds([foodId])).length > 0;
+    if (!foodExists) {
+      throw new Error("Gecersiz malzeme secimi.");
+    }
+
+    const adjustment = await upsertInventoryItem({
       userId: req.auth.userId,
       foodId,
       amountGrams
@@ -213,7 +225,34 @@ planRouter.post("/inventory", async (req, res) => {
     const map = Object.fromEntries(current.map((entry) => [entry.foodId, entry.amountGrams]));
     const items = foods.map((food) => ({ ...food, amountGrams: map[food.id] || 0 }));
 
-    res.status(201).json({ items });
+    res.status(201).json({ items, adjustment });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+planRouter.post("/inventory/increment", async (req, res) => {
+  try {
+    const foodId = String(req.body?.foodId || "").trim();
+    const deltaGrams = Number(req.body?.deltaGrams || 0);
+
+    const foodExists = (await getFoodsByIds([foodId])).length > 0;
+    if (!foodExists) {
+      throw new Error("Gecersiz malzeme secimi.");
+    }
+
+    const adjustment = await incrementInventoryItem({
+      userId: req.auth.userId,
+      foodId,
+      deltaGrams
+    });
+
+    const foods = await listFoods();
+    const current = await listUserInventory(req.auth.userId);
+    const map = Object.fromEntries(current.map((entry) => [entry.foodId, entry.amountGrams]));
+    const items = foods.map((food) => ({ ...food, amountGrams: map[food.id] || 0 }));
+
+    res.status(201).json({ items, adjustment });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -261,6 +300,11 @@ planRouter.delete("/dashboard-meals/:mealId", async (req, res) => {
 planRouter.post("/checkout", async (req, res) => {
   try {
     const { cartItems = [], profile = {}, date } = req.body ?? {};
+    const safeDate = String(date || "").trim();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(safeDate)) {
+      throw new Error("Checkout icin gecerli bir tarih zorunludur (YYYY-MM-DD).");
+    }
 
     const calories =
       profile.calorieMode === "auto"
@@ -284,7 +328,7 @@ planRouter.post("/checkout", async (req, res) => {
     );
 
     const inventoryMap = await getInventoryMap(req.auth.userId);
-    const previousMealLog = await getDailyMealLog({ userId: req.auth.userId, date });
+    const previousMealLog = await getDailyMealLog({ userId: req.auth.userId, date: safeDate });
 
     const analysis = analyzeCheckout({
       cartItems: normalizedItems,
@@ -294,11 +338,11 @@ planRouter.post("/checkout", async (req, res) => {
       previousTotals: previousMealLog.totals
     });
 
-    await appendMealLog({ userId: req.auth.userId, date, items: normalizedItems });
+    await appendMealLog({ userId: req.auth.userId, date: safeDate, items: normalizedItems });
 
-    const mealLog = await getDailyMealLog({ userId: req.auth.userId, date });
+    const mealLog = await getDailyMealLog({ userId: req.auth.userId, date: safeDate });
     const waterTargetMl = Math.max(1200, Math.min(5000, Math.round((Number(profile.weightKg) || 78) * 35)));
-    const water = await getDailyWaterStatus({ userId: req.auth.userId, date, targetMl: waterTargetMl });
+    const water = await getDailyWaterStatus({ userId: req.auth.userId, date: safeDate, targetMl: waterTargetMl });
 
     res.json({
       date: mealLog.date,
@@ -347,6 +391,10 @@ planRouter.post("/day-log/entries", async (req, res) => {
       fat: Math.max(0, Number(entry.fat) || 0),
       ingredientIds: []
     };
+
+    if (payload.calories <= 0 && payload.protein <= 0 && payload.carb <= 0 && payload.fat <= 0) {
+      throw new Error("Manuel kayit icin en az bir makro veya kalori degeri sifirdan buyuk olmali.");
+    }
 
     await appendMealLog({ userId: req.auth.userId, date, items: [payload] });
 
@@ -429,9 +477,9 @@ planRouter.get("/water", async (req, res) => {
 planRouter.post("/water", async (req, res) => {
   try {
     const { date, amountMl, targetMl } = req.body ?? {};
-    await appendWaterLog({ userId: req.auth.userId, date, amountMl });
+    const adjustment = await appendWaterLog({ userId: req.auth.userId, date, amountMl });
     const water = await getDailyWaterStatus({ userId: req.auth.userId, date, targetMl });
-    res.status(201).json(water);
+    res.status(201).json({ water, adjustment });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

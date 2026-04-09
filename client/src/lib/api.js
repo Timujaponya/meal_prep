@@ -46,6 +46,7 @@ export const api = {
   deleteDashboardMeal: (mealId) => request(`/dashboard-meals/${mealId}`, { method: "DELETE" }),
   getInventory: () => request("/inventory"),
   upsertInventory: (body) => request("/inventory", { method: "POST", body: JSON.stringify(body) }),
+  incrementInventory: (body) => request("/inventory/increment", { method: "POST", body: JSON.stringify(body) }),
   generatePlan: (body) => request("/generate", { method: "POST", body: JSON.stringify(body) }),
   swapMealItem: (body) => request("/swap", { method: "POST", body: JSON.stringify(body) }),
   checkoutPlan: (body) => request("/checkout", { method: "POST", body: JSON.stringify(body) }),

@@ -8,7 +8,8 @@
     "start": "node src/index.js",
     "import:usda": "node scripts/import-usda-foods.mjs",
     "curate:foods": "node scripts/build-curated-food-catalog.mjs",
-    "seed:foods": "node scripts/seed-foods-to-db.mjs"
+    "seed:foods": "node scripts/seed-foods-to-db.mjs",
+    "check:smoke": "node scripts/smoke-integrity.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",

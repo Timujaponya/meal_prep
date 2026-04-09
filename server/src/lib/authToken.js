@@ -1,6 +1,14 @@
 import crypto from "crypto";
 
-const AUTH_SECRET = process.env.AUTH_SECRET || "meal_prep_dev_secret";
+const AUTH_SECRET = String(process.env.AUTH_SECRET || "").trim();
+
+if (!AUTH_SECRET) {
+  throw new Error("AUTH_SECRET zorunludur.");
+}
+
+if (AUTH_SECRET.length < 32) {
+  throw new Error("AUTH_SECRET en az 32 karakter olmali.");
+}
 
 function base64UrlEncode(value) {
   return Buffer.from(value).toString("base64url");

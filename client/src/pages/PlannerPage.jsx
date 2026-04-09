@@ -3,6 +3,7 @@ import MealCard from "../components/MealCard.jsx";
 import ProfileForm from "../components/ProfileForm.jsx";
 
 export default function PlannerPage({
+  userRole,
   profile,
   mealCount,
   setMealCount,
@@ -57,6 +58,7 @@ export default function PlannerPage({
       />
 
       <IngredientSelector
+        canManageFoods={userRole === "admin"}
         foods={foods}
         selectableFoodIds={selectableFoodIds}
         selectedIds={selectedFoodIds}

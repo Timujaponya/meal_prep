@@ -168,6 +168,8 @@ function loadExternalCatalogItems() {
 
 const externalCatalogItems = loadExternalCatalogItems();
 const seedFoodItems = externalCatalogItems.length ? externalCatalogItems : [...baseSeedFoodItems, ...generatedSeedFoodItems];
+const foodSeedMode = String(process.env.FOOD_SEED_MODE || "insert-missing").trim().toLowerCase();
+const pruneUnknownOnStartup = String(process.env.FOODS_PRUNE_UNKNOWN || "false").toLowerCase() === "true";
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const useDatabase = Boolean(DATABASE_URL);
@@ -231,6 +233,34 @@ export async function initializeFoodStore() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+
+  if (foodSeedMode === "full-sync") {
+    for (const seed of seedFoodItems) {
+      await db.query(
+        `
+        INSERT INTO foods (id, name, type, protein, carb, fat, calories, default_portion)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (id)
+        DO UPDATE SET
+          name = EXCLUDED.name,
+          type = EXCLUDED.type,
+          protein = EXCLUDED.protein,
+          carb = EXCLUDED.carb,
+          fat = EXCLUDED.fat,
+          calories = EXCLUDED.calories,
+          default_portion = EXCLUDED.default_portion
+        `,
+        toDbRow(seed)
+      );
+    }
+
+    if (pruneUnknownOnStartup && seedFoodItems.length) {
+      const seedIds = seedFoodItems.map((seed) => seed.id);
+      await db.query("DELETE FROM foods WHERE NOT (id = ANY($1::text[]))", [seedIds]);
+    }
+
+    return;
+  }
 
   const seedIds = seedFoodItems.map((seed) => seed.id);
   const existingRows = await db.query("SELECT id FROM foods WHERE id = ANY($1::text[])", [seedIds]);

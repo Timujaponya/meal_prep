@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import NumberStepper from "../components/NumberStepper.jsx";
 
-export default function InventoryPage({ items = [], catalog = [], onSaveAmount, onResolvePortion, busy }) {
+export default function InventoryPage({ items = [], catalog = [], onSaveAmount, onIncrementAmount, onResolvePortion, busy }) {
   const [localAmounts, setLocalAmounts] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFoodId, setSelectedFoodId] = useState("");
@@ -37,10 +37,14 @@ export default function InventoryPage({ items = [], catalog = [], onSaveAmount, 
       return;
     }
 
-    const existingAmount = Number(items.find((item) => item.id === selectedFoodId)?.amountGrams) || 0;
-    const nextAmount = existingAmount + amount;
+    if (typeof onIncrementAmount === "function") {
+      await onIncrementAmount(selectedFoodId, amount);
+    } else {
+      const existingAmount = Number(items.find((item) => item.id === selectedFoodId)?.amountGrams) || 0;
+      const nextAmount = existingAmount + amount;
+      await onSaveAmount(selectedFoodId, nextAmount);
+    }
 
-    await onSaveAmount(selectedFoodId, nextAmount);
     setSelectedFoodId("");
     setSearchTerm("");
     setPortionExpression("");

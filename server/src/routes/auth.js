@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { createAuthToken } from "../lib/authToken.js";
 import { requireAuth } from "../middleware/auth.js";
-import { createUser, findUserByEmail, findUserById, toPublicUser } from "../data/users.js";
+import { createUser, findUserByEmail, findUserById, toPublicUser, verifyUserPassword } from "../data/users.js";
 
 const authRouter = Router();
 
@@ -11,7 +11,8 @@ authRouter.post("/auth/login", async (req, res) => {
     const password = String(req.body?.password || "").trim();
 
     const user = await findUserByEmail(email);
-    if (!user || user.password !== password) {
+    const valid = await verifyUserPassword(user, password);
+    if (!valid) {
       res.status(401).json({ message: "Email veya sifre hatali." });
       return;
     }

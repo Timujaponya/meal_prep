@@ -13,6 +13,7 @@ const INITIAL_FORM = {
 const TYPE_ORDER = { protein: 1, carb: 2, fat: 3 };
 
 export default function IngredientSelector({
+  canManageFoods = false,
   foods,
   selectableFoodIds = [],
   selectedIds,
@@ -88,9 +89,11 @@ export default function IngredientSelector({
     <section className="panel panel-glass">
       <div className="ingredient-toolbar">
         <h2 className="section-title">Ingredient Pantry</h2>
-        <button type="button" className="add-more-btn" onClick={() => setExpanded((prev) => !prev)}>
-          + Add More
-        </button>
+        {canManageFoods ? (
+          <button type="button" className="add-more-btn" onClick={() => setExpanded((prev) => !prev)}>
+            + Add More
+          </button>
+        ) : null}
       </div>
 
       <div className="pantry-chip-wrap">
@@ -110,14 +113,16 @@ export default function IngredientSelector({
                 <small>{food.type}</small>
               </button>
 
-              <div className="pantry-chip-actions">
-                <button type="button" className="swap-btn" disabled={busy} onClick={() => beginEdit(food)}>
-                  Duzenle
-                </button>
-                <button type="button" className="remove-food-btn" disabled={busy} onClick={() => onRemoveFood(food.id)}>
-                  x
-                </button>
-              </div>
+              {canManageFoods ? (
+                <div className="pantry-chip-actions">
+                  <button type="button" className="swap-btn" disabled={busy} onClick={() => beginEdit(food)}>
+                    Duzenle
+                  </button>
+                  <button type="button" className="remove-food-btn" disabled={busy} onClick={() => onRemoveFood(food.id)}>
+                    x
+                  </button>
+                </div>
+              ) : null}
             </article>
           );
         })}
@@ -125,7 +130,7 @@ export default function IngredientSelector({
 
       {!pantryFoods.length ? <p className="panel-copy">Pantry secimi icin once My Items'tan malzeme eklemelisin.</p> : null}
 
-      {expanded ? (
+      {expanded && canManageFoods ? (
         <div className="manager-block">
           <p className="panel-copy">Yeni malzeme ekleyebilir veya secili malzemeyi duzenleyebilirsin.</p>
 

@@ -79,7 +79,7 @@ function aggregateRows(rows) {
   const grouped = new Map();
 
   for (const row of rows) {
-    const key = `${row.sourceId}__${row.title}`;
+    const key = JSON.stringify([row.sourceId, row.title]);
     const current = grouped.get(key);
 
     if (!current) {
@@ -164,7 +164,11 @@ export async function appendMealLog({ userId, date, items }) {
   }
 
   const entryDate = asDateString(date);
-  const normalizedItems = Array.isArray(items) ? items.map(sanitizeEntry).filter((item) => item.calories > 0) : [];
+  const normalizedItems = Array.isArray(items)
+    ? items
+        .map(sanitizeEntry)
+        .filter((item) => item.calories > 0 || item.protein > 0 || item.carb > 0 || item.fat > 0)
+    : [];
 
   if (!normalizedItems.length) {
     throw new Error("Kayit icin gecerli ogun bulunamadi.");
@@ -357,6 +361,10 @@ export async function replaceMealLogBySource({ userId, date, sourceId, entry = {
     ingredientIds: Array.isArray(current.ingredientIds) ? current.ingredientIds : []
   };
 
+  if (nextRow.calories <= 0 && nextRow.protein <= 0 && nextRow.carb <= 0 && nextRow.fat <= 0) {
+    throw new Error("Guncel kayitta en az bir makro veya kalori degeri sifirdan buyuk olmali.");
+  }
+
   if (!useDatabase) {
     memoryMealLogs = memoryMealLogs.filter(
       (row) => !(row.userId === safeUserId && row.entryDate === entryDate && row.sourceId === safeSourceId)
@@ -422,10 +430,14 @@ export async function appendWaterLog({ userId, date, amountMl }) {
   }
 
   const safeAmount = Math.max(50, Math.min(2000, parsedAmount));
+  const clamped = safeAmount !== parsedAmount;
 
   if (!useDatabase) {
     memoryWaterLogs.push({ userId: safeUserId, entryDate, amountMl: safeAmount, createdAt: new Date().toISOString() });
-    return;
+    return {
+      appliedAmountMl: safeAmount,
+      clamped
+    };
   }
 
   const db = getPool();
@@ -436,6 +448,11 @@ export async function appendWaterLog({ userId, date, amountMl }) {
     `,
     [safeUserId, entryDate, safeAmount]
   );
+
+  return {
+    appliedAmountMl: safeAmount,
+    clamped
+  };
 }
 
 export async function getDailyWaterStatus({ userId, date, targetMl }) {

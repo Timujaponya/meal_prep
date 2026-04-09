@@ -5,7 +5,9 @@ const GOAL_SETTINGS = {
 };
 
 export function estimateCalories({ weightKg = 75, heightCm = 175, goal = "maintain" }) {
-  const base = 10 * Number(weightKg) + 6.25 * Number(heightCm) - 5 * 28 + 5;
+  const safeWeight = Math.max(40, Math.min(250, Number(weightKg) || 75));
+  const safeHeight = Math.max(120, Math.min(230, Number(heightCm) || 175));
+  const base = 10 * safeWeight + 6.25 * safeHeight - 5 * 28 + 5;
 
   if (goal === "cut") return Math.round(base * 1.35 - 300);
   if (goal === "bulk") return Math.round(base * 1.45 + 250);

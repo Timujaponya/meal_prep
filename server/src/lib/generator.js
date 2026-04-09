@@ -37,31 +37,38 @@ function evaluateCombination(protein, carb, fat, target) {
   return best;
 }
 
-function pickBestMeal(proteins, carbs, fats, target, blockedKey) {
+function pickBestMeal(proteins, carbs, fats, target, blockedKeys = new Set()) {
   let bestMeal = null;
+  let fallbackMeal = null;
 
   for (const p of proteins) {
     for (const c of carbs) {
       for (const f of fats) {
         const comboKey = `${p.id}_${c.id}_${f.id}`;
-        if (blockedKey && comboKey === blockedKey) {
+        const candidate = evaluateCombination(p, c, f, target);
+        const mealCandidate = {
+          score: candidate.score,
+          comboKey,
+          items: candidate.items,
+          macros: roundMacros(candidate.total)
+        };
+
+        if (!fallbackMeal || mealCandidate.score < fallbackMeal.score) {
+          fallbackMeal = mealCandidate;
+        }
+
+        if (blockedKeys.has(comboKey)) {
           continue;
         }
 
-        const candidate = evaluateCombination(p, c, f, target);
-        if (!bestMeal || candidate.score < bestMeal.score) {
-          bestMeal = {
-            score: candidate.score,
-            comboKey,
-            items: candidate.items,
-            macros: roundMacros(candidate.total)
-          };
+        if (!bestMeal || mealCandidate.score < bestMeal.score) {
+          bestMeal = mealCandidate;
         }
       }
     }
   }
 
-  return bestMeal;
+  return bestMeal || fallbackMeal;
 }
 
 function getPerMealTarget(dailyTarget, mealCount) {
@@ -83,10 +90,15 @@ export function buildMealPlan({ selectedFoods, dailyTarget, mealCount = 4 }) {
 
   const mealTarget = getPerMealTarget(dailyTarget, mealCount);
   const meals = [];
+  const usedCombos = new Set();
 
   for (let index = 0; index < mealCount; index += 1) {
-    const blocked = index > 0 ? meals[index - 1].comboKey : null;
-    const best = pickBestMeal(proteins, carbs, fats, mealTarget, blocked);
+    const best = pickBestMeal(proteins, carbs, fats, mealTarget, usedCombos);
+    if (!best) {
+      throw new Error("Secilen malzemelerle plan olusturulamadi.");
+    }
+
+    usedCombos.add(best.comboKey);
 
     meals.push({
       id: `meal_${index + 1}`,

@@ -15,7 +15,7 @@ const recipeTemplates = [
     ingredients: [
       { foodId: "oats", grams: 60 },
       { foodId: "egg", grams: 120 },
-      { foodId: "avocado", grams: 20 }
+      { foodId: "butter", grams: 8 }
     ]
   },
   {
@@ -30,7 +30,7 @@ const recipeTemplates = [
       sourceLicense: "Unsplash License"
     },
     ingredients: [
-      { foodId: "turkey", grams: 170 },
+      { foodId: "chicken", grams: 170 },
       { foodId: "rice", grams: 170 },
       { foodId: "olive_oil", grams: 10 }
     ]
@@ -48,8 +48,8 @@ const recipeTemplates = [
     },
     ingredients: [
       { foodId: "oats", grams: 55 },
-      { foodId: "almond", grams: 18 },
-      { foodId: "avocado", grams: 30 }
+      { foodId: "egg_white", grams: 80 },
+      { foodId: "banana", grams: 60 }
     ]
   },
   {
@@ -65,7 +65,7 @@ const recipeTemplates = [
     },
     ingredients: [
       { foodId: "egg", grams: 180 },
-      { foodId: "potato", grams: 100 },
+      { foodId: "broccoli", grams: 120 },
       { foodId: "olive_oil", grams: 8 }
     ]
   },
@@ -81,8 +81,8 @@ const recipeTemplates = [
       sourceLicense: "Unsplash License"
     },
     ingredients: [
-      { foodId: "turkey", grams: 180 },
-      { foodId: "avocado", grams: 70 },
+      { foodId: "chicken", grams: 180 },
+      { foodId: "broccoli", grams: 140 },
       { foodId: "olive_oil", grams: 8 }
     ]
   },
@@ -116,7 +116,7 @@ const recipeTemplates = [
     },
     ingredients: [
       { foodId: "salmon", grams: 170 },
-      { foodId: "avocado", grams: 80 },
+      { foodId: "broccoli", grams: 140 },
       { foodId: "olive_oil", grams: 8 }
     ]
   }
@@ -193,13 +193,22 @@ function computeRecipe(template, foodLookup) {
 
 export function listRecipeCatalog(foods) {
   const foodLookup = Object.fromEntries((foods || []).map((food) => [food.id, food]));
-  const recipes = recipeTemplates.map((template) => computeRecipe(template, foodLookup));
+  const computed = recipeTemplates.map((template) => computeRecipe(template, foodLookup));
+  const recipes = computed.filter((recipe) => !recipe.dataQuality.missingIngredientIds.length);
 
   const categories = ["all", ...new Set(recipes.map((recipe) => recipe.category))];
 
+  const publishedRecipeIds = new Set(recipes.map((recipe) => recipe.id));
+  const sections = recipeSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((id) => publishedRecipeIds.has(id))
+    }))
+    .filter((section) => section.items.length > 0);
+
   return {
     categories,
-    sections: recipeSections,
+    sections,
     recipes,
     meta: {
       recipeCount: recipes.length,

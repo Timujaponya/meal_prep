@@ -16,6 +16,41 @@ const seedAdminUser = {
 let pool;
 let memoryUsers = [seedAdminUser];
 
+function isPasswordHash(value) {
+  return String(value || "").startsWith("scrypt$");
+}
+
+function hashPassword(password) {
+  const safePassword = String(password || "");
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derived = crypto.scryptSync(safePassword, salt, 64).toString("hex");
+  return `scrypt$${salt}$${derived}`;
+}
+
+function verifyPassword(password, storedHash) {
+  const safeHash = String(storedHash || "");
+  if (!isPasswordHash(safeHash)) {
+    return false;
+  }
+
+  const parts = safeHash.split("$");
+  if (parts.length !== 3) {
+    return false;
+  }
+
+  const salt = parts[1];
+  const expected = parts[2];
+  const derived = crypto.scryptSync(String(password || ""), salt, 64).toString("hex");
+
+  const expectedBuffer = Buffer.from(expected, "hex");
+  const derivedBuffer = Buffer.from(derived, "hex");
+  if (expectedBuffer.length !== derivedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(expectedBuffer, derivedBuffer);
+}
+
 function getPool() {
   if (!useDatabase) {
     return null;
@@ -55,6 +90,9 @@ export function toPublicUser(user) {
 
 export async function initializeUserStore() {
   if (!useDatabase) {
+    memoryUsers = memoryUsers.map((user) =>
+      isPasswordHash(user.password) ? user : { ...user, password: hashPassword(user.password) }
+    );
     return;
   }
 
@@ -80,12 +118,21 @@ export async function initializeUserStore() {
     [
       seedAdminUser.id,
       seedAdminUser.email,
-      seedAdminUser.password,
+      hashPassword(seedAdminUser.password),
       seedAdminUser.role,
       seedAdminUser.displayName,
       seedAdminUser.avatarUrl
     ]
   );
+
+  const legacyPasswords = await db.query("SELECT id, password FROM users");
+  for (const row of legacyPasswords.rows) {
+    if (isPasswordHash(row.password)) {
+      continue;
+    }
+
+    await db.query("UPDATE users SET password = $2 WHERE id = $1", [row.id, hashPassword(row.password)]);
+  }
 }
 
 export async function findUserByEmail(email) {
@@ -134,7 +181,7 @@ export async function createUser({ email, password, displayName }) {
   const nextUser = {
     id: `user_${crypto.randomUUID().replace(/-/g, "").slice(0, 12)}`,
     email: normalizedEmail,
-    password: normalizedPassword,
+    password: hashPassword(normalizedPassword),
     role: "user",
     displayName: normalizedName || normalizedEmail.split("@")[0],
     avatarUrl: ""
@@ -166,6 +213,41 @@ export async function createUser({ email, password, displayName }) {
   );
 
   return fromRow(result.rows[0]);
+}
+
+export async function verifyUserPassword(user, plainPassword) {
+  const safeUser = user || null;
+  if (!safeUser) {
+    return false;
+  }
+
+  const candidate = String(plainPassword || "");
+  if (!candidate) {
+    return false;
+  }
+
+  if (verifyPassword(candidate, safeUser.password)) {
+    return true;
+  }
+
+  // Legacy plaintext migration path.
+  if (safeUser.password === candidate) {
+    const nextHash = hashPassword(candidate);
+
+    if (!useDatabase) {
+      const index = memoryUsers.findIndex((entry) => entry.id === safeUser.id);
+      if (index >= 0) {
+        memoryUsers[index] = { ...memoryUsers[index], password: nextHash };
+      }
+    } else {
+      const db = getPool();
+      await db.query("UPDATE users SET password = $2 WHERE id = $1", [safeUser.id, nextHash]);
+    }
+
+    return true;
+  }
+
+  return false;
 }
 
 export async function closeUserStore() {

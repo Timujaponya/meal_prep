@@ -40,8 +40,12 @@ export function buildShoppingList(payload = {}) {
     throw new Error("Shopping list olusturmak icin en az bir ogun gereklidir.");
   }
 
-  const dayCount = Math.max(1, Math.min(14, Math.round(Number(payload.dayCount) || 1)));
-  const roundStep = Math.max(1, Math.min(25, Math.round(Number(payload.roundTo) || 5)));
+  const requestedDayCount = Number(payload.dayCount);
+  const requestedRoundStep = Number(payload.roundTo);
+  const dayCount = Math.max(1, Math.min(14, Math.round(requestedDayCount) || 1));
+  const roundStep = Math.max(1, Math.min(25, Math.round(requestedRoundStep) || 5));
+  const dayCountClamped = Number.isFinite(requestedDayCount) ? dayCount !== Math.round(requestedDayCount) : false;
+  const roundStepClamped = Number.isFinite(requestedRoundStep) ? roundStep !== Math.round(requestedRoundStep) : false;
   const excluded = new Set(
     Array.isArray(payload.excludeFoodIds) ? payload.excludeFoodIds.map((value) => String(value)) : []
   );
@@ -145,9 +149,13 @@ export function buildShoppingList(payload = {}) {
   return {
     summary: {
       mealCount: meals.length,
+      requestedDayCount: Number.isFinite(requestedDayCount) ? requestedDayCount : null,
       dayCount,
+      dayCountClamped,
       uniqueItemCount: items.length,
-      roundStep
+      requestedRoundStep: Number.isFinite(requestedRoundStep) ? requestedRoundStep : null,
+      roundStep,
+      roundStepClamped
     },
     totals: {
       grams: Math.round(totals.grams),

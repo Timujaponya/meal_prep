@@ -84,17 +84,38 @@ function AppShell({ user, onLogout, onNotify }) {
   useEffect(() => {
     async function initData() {
       try {
-        const [foodsPayload, inventoryPayload, recipesPayload] = await Promise.all([
+        const [foodsResult, inventoryResult, recipesResult] = await Promise.allSettled([
           api.getFoods(),
           api.getInventory(),
           api.getRecipes()
         ]);
-        setFoods(foodsPayload.foods);
-        setInventoryItems(inventoryPayload.items);
-        setRecipesCatalog(Array.isArray(recipesPayload?.recipes) ? recipesPayload.recipes : []);
-        setSelectedFoodIds(
-          inventoryPayload.items.filter((item) => Number(item.amountGrams) > 0).map((item) => item.id)
-        );
+
+        const nextFoods =
+          foodsResult.status === "fulfilled" && Array.isArray(foodsResult.value?.foods)
+            ? foodsResult.value.foods
+            : [];
+        const nextInventory =
+          inventoryResult.status === "fulfilled" && Array.isArray(inventoryResult.value?.items)
+            ? inventoryResult.value.items
+            : [];
+        const nextRecipes =
+          recipesResult.status === "fulfilled" && Array.isArray(recipesResult.value?.recipes)
+            ? recipesResult.value.recipes
+            : [];
+
+        setFoods(nextFoods);
+        setInventoryItems(nextInventory);
+        setRecipesCatalog(nextRecipes);
+        setSelectedFoodIds(nextInventory.filter((item) => Number(item.amountGrams) > 0).map((item) => item.id));
+
+        const failedSources = [];
+        if (foodsResult.status === "rejected") failedSources.push("foods");
+        if (inventoryResult.status === "rejected") failedSources.push("inventory");
+        if (recipesResult.status === "rejected") failedSources.push("recipes");
+
+        if (failedSources.length) {
+          setError(`Bazi veriler yuklenemedi: ${failedSources.join(", ")}`);
+        }
       } catch (initError) {
         setError(initError.message);
       }
@@ -219,7 +240,14 @@ function AppShell({ user, onLogout, onNotify }) {
     try {
       const payload = await api.upsertInventory({ foodId, amountGrams });
       setInventoryItems(payload.items);
-      onNotify("Inventory guncellendi.", "success");
+      if (payload?.adjustment?.clamped) {
+        onNotify(
+          `Inventory guncellendi (uygulanan miktar: ${payload.adjustment.appliedAmountGrams} g).`,
+          "info"
+        );
+      } else {
+        onNotify("Inventory guncellendi.", "success");
+      }
     } catch (inventoryError) {
       setError(inventoryError.message);
       onNotify(inventoryError.message, "error");
@@ -231,6 +259,30 @@ function AppShell({ user, onLogout, onNotify }) {
   async function handleResolveInventoryPortion(expression) {
     const payload = await api.resolvePortionExpression(expression);
     return payload.resolved;
+  }
+
+  async function handleInventoryIncrement(foodId, deltaGrams) {
+    setInventoryBusy(true);
+    setError("");
+
+    try {
+      const payload = await api.incrementInventory({ foodId, deltaGrams });
+      setInventoryItems(payload.items);
+
+      if (payload?.adjustment?.clamped) {
+        onNotify(
+          `Inventory guncellendi (uygulanan miktar: ${payload.adjustment.appliedAmountGrams} g).`,
+          "info"
+        );
+      } else {
+        onNotify("Inventory guncellendi.", "success");
+      }
+    } catch (inventoryError) {
+      setError(inventoryError.message);
+      onNotify(inventoryError.message, "error");
+    } finally {
+      setInventoryBusy(false);
+    }
   }
 
   function handleProfileChange(key, value) {
@@ -415,13 +467,20 @@ function AppShell({ user, onLogout, onNotify }) {
         targetMl: waterTargetByWeight(profile.weightKg)
       });
 
+      const waterPayload = payload?.water || payload;
+
       setDayLog((current) => ({
         ...(current || {}),
         date: selectedDate,
         meals: current?.meals || { date: selectedDate, entries: [], totals: { calories: 0, protein: 0, carb: 0, fat: 0 } },
-        water: payload
+        water: waterPayload
       }));
-      onNotify("Su kaydi eklendi.", "success");
+
+      if (payload?.adjustment?.clamped) {
+        onNotify(`Su kaydi eklendi (uygulanan miktar: ${payload.adjustment.appliedAmountMl} ml).`, "info");
+      } else {
+        onNotify("Su kaydi eklendi.", "success");
+      }
     } catch (waterError) {
       setError(waterError.message);
       onNotify(waterError.message, "error");
@@ -527,6 +586,7 @@ function AppShell({ user, onLogout, onNotify }) {
               path="/planner"
               element={
                 <PlannerPage
+                  userRole={user?.role}
                   profile={profile}
                   mealCount={mealCount}
                   setMealCount={setMealCount}
@@ -556,6 +616,7 @@ function AppShell({ user, onLogout, onNotify }) {
                   items={inventoryItems}
                   catalog={foods}
                   onSaveAmount={handleInventorySave}
+                  onIncrementAmount={handleInventoryIncrement}
                   onResolvePortion={handleResolveInventoryPortion}
                   busy={inventoryBusy}
                 />

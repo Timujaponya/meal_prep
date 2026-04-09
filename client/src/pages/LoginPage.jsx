@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-const DEFAULT_EMAIL = "admin@mealforge.local";
-const DEFAULT_PASSWORD = "admin123";
-
 export default function LoginPage({ onLogin, onRegister, busy, error }) {
-  const [email, setEmail] = useState(DEFAULT_EMAIL);
-  const [password, setPassword] = useState(DEFAULT_PASSWORD);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("Meal User");
   const [mode, setMode] = useState("login");
 
@@ -25,7 +22,7 @@ export default function LoginPage({ onLogin, onRegister, busy, error }) {
       <section className="panel panel-glass auth-card">
         <p className="kicker">Authentication</p>
         <h1 className="screen-title">{mode === "register" ? "Kayit Ol" : "Giris Yap"}</h1>
-        <p className="screen-subtitle">{mode === "register" ? "Yeni hesap olustur." : "Test admin kullanicisi varsayilan olarak dolduruldu."}</p>
+        <p className="screen-subtitle">{mode === "register" ? "Yeni hesap olustur." : "Hesabinla giris yap."}</p>
 
         <div className="mode-row mode-row-no-top">
           <button type="button" className={`mode-pill ${mode === "login" ? "mode-pill-active" : ""}`} onClick={() => setMode("login")}>

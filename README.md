@@ -43,6 +43,15 @@ Kalici veri icin:
 2. Backend servisine `DATABASE_URL` degiskenini bagla.
 3. Uygulama acilista `foods` tablosunu otomatik olusturur ve tablo bossa seed verileri ekler.
 
+Startup seed modlari:
+
+- `FOOD_SEED_MODE=insert-missing` (varsayilan): sadece eksik katalog id'leri ekler.
+- `FOOD_SEED_MODE=full-sync`: katalogu upsert eder; `FOODS_PRUNE_UNKNOWN=true` ise katalog disi id'leri de siler.
+
+Railway'de tam senkron istenirse Start komutu ornegi:
+
+- `npm run seed:foods -w server && npm run start -w server`
+
 Varsayilan komutlar:
 
 - Build: `npm install && npm run build`
