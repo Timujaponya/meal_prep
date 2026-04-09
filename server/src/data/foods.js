@@ -1,6 +1,6 @@
 import { Pool } from "pg";
 
-const seedFoodItems = [
+const baseSeedFoodItems = [
   { id: "chicken", name: "Tavuk Gogus", type: "protein", protein: 31, carb: 0, fat: 3.6, calories: 165, defaultPortion: 120 },
   { id: "turkey", name: "Hindi", type: "protein", protein: 29, carb: 0, fat: 1.5, calories: 135, defaultPortion: 120 },
   { id: "beef_lean", name: "Yagsiz Dana", type: "protein", protein: 26, carb: 0, fat: 10, calories: 210, defaultPortion: 110 },
@@ -19,6 +19,96 @@ const seedFoodItems = [
   { id: "peanut_butter", name: "Fistik Ezmesi", type: "fat", protein: 25, carb: 20, fat: 50, calories: 588, defaultPortion: 24 },
   { id: "walnut", name: "Ceviz", type: "fat", protein: 15, carb: 14, fat: 65, calories: 654, defaultPortion: 20 }
 ];
+
+const generatedCatalogConfig = {
+  protein: {
+    count: 185,
+    bases: [
+      "Tavuk But", "Tavuk Kanat", "Hindi Fileto", "Dana Bonfile", "Dana Kontrfile", "Kuzu But", "Kuzu Pirzola",
+      "Ton Baligi", "Uskumru", "Levrek", "Corbali Somon", "Karides", "Kalamar", "Midye", "Yumurta Aki",
+      "Lor Peyniri", "Yagziz Yogurt", "Kefir", "Soya Filizi", "Tempeh", "Tofu", "Nohut Ezmesi", "Mercimek Ezmesi",
+      "Kuru Fasulye", "Barbunya", "Bezelye", "Seitan", "Hindi Jambon", "Pastirma", "Izgara Kofte"
+    ]
+  },
+  carb: {
+    count: 170,
+    bases: [
+      "Bulgur", "Esmer Pirinc", "Yasmin Pirinc", "Basmatik Pirinc", "Karabuğday", "Ince Yulaf", "Kalin Yulaf",
+      "Tatli Patates", "Mor Patates", "Kuskus", "Erişte", "Tam Bugday Makarna", "Misir", "Nohut",
+      "Yesil Mercimek", "Kirmizi Mercimek", "Kuru Fasulye", "Boreklik Bugday", "Kinoa Kirmizi", "Kinoa Beyaz",
+      "Arpa", "Cavdar", "Tam Bugday Ekmek", "Kepekli Ekmek", "Misir Tortilla", "Pancar", "Havuc",
+      "Kabak", "Brokoli", "Karnabahar"
+    ]
+  },
+  fat: {
+    count: 130,
+    bases: [
+      "Zeytinyagi Natuel", "Ay Cicek Yagi", "Kanola Yagi", "Hindistan Cevizi Yagi", "Tereyagi", "Ghee",
+      "Findik", "Antep Fistigi", "Kaju", "Pekan", "Cia Tohumu", "Keten Tohumu", "Susam", "Tahin", "Cekirdek",
+      "Zeytin Siyah", "Zeytin Yesil", "Kaymak", "Krema", "Avokado Yagi", "Badem Ezmesi", "Findik Ezmesi"
+    ]
+  }
+};
+
+const variantLabels = ["Klasik", "Taze", "Organik", "Yerli", "Dogal", "Secim", "Premium", "Gunluk", "Paket", "Mutfak"];
+
+function roundOne(value) {
+  return Math.round(value * 10) / 10;
+}
+
+function nutritionForType(type, index) {
+  if (type === "protein") {
+    const protein = roundOne(18 + (index % 17));
+    const carb = roundOne((index % 7) * 0.8);
+    const fat = roundOne(2 + ((index * 3) % 16));
+    return { protein, carb, fat, defaultPortion: 90 + (index % 6) * 15 };
+  }
+
+  if (type === "carb") {
+    const protein = roundOne(1 + (index % 8) * 1.2);
+    const carb = roundOne(15 + ((index * 5) % 61));
+    const fat = roundOne(((index * 2) % 9) * 0.5);
+    return { protein, carb, fat, defaultPortion: 120 + (index % 7) * 18 };
+  }
+
+  const protein = roundOne(((index * 3) % 13) * 0.8);
+  const carb = roundOne(((index * 5) % 11) * 0.7);
+  const fat = roundOne(20 + ((index * 7) % 81));
+  return { protein, carb, fat, defaultPortion: 18 + (index % 6) * 8 };
+}
+
+function buildGeneratedFoodsByType(type, config) {
+  const items = [];
+
+  for (let index = 0; index < config.count; index += 1) {
+    const base = config.bases[index % config.bases.length];
+    const variant = variantLabels[Math.floor(index / config.bases.length) % variantLabels.length];
+    const sequence = String(index + 1).padStart(3, "0");
+    const nutrition = nutritionForType(type, index);
+    const calories = Math.round(nutrition.protein * 4 + nutrition.carb * 4 + nutrition.fat * 9);
+
+    items.push({
+      id: `${type}_catalog_${sequence}`,
+      name: `${base} ${variant} ${sequence}`,
+      type,
+      protein: nutrition.protein,
+      carb: nutrition.carb,
+      fat: nutrition.fat,
+      calories,
+      defaultPortion: nutrition.defaultPortion
+    });
+  }
+
+  return items;
+}
+
+const generatedSeedFoodItems = [
+  ...buildGeneratedFoodsByType("protein", generatedCatalogConfig.protein),
+  ...buildGeneratedFoodsByType("carb", generatedCatalogConfig.carb),
+  ...buildGeneratedFoodsByType("fat", generatedCatalogConfig.fat)
+];
+
+const seedFoodItems = [...baseSeedFoodItems, ...generatedSeedFoodItems];
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const useDatabase = Boolean(DATABASE_URL);
@@ -83,12 +173,15 @@ export async function initializeFoodStore() {
     )
   `);
 
-  const countResult = await db.query("SELECT COUNT(*)::int AS count FROM foods");
-  if (countResult.rows[0].count > 0) {
-    return;
-  }
+  const seedIds = seedFoodItems.map((seed) => seed.id);
+  const existingRows = await db.query("SELECT id FROM foods WHERE id = ANY($1::text[])", [seedIds]);
+  const existingIds = new Set(existingRows.rows.map((row) => row.id));
 
   for (const seed of seedFoodItems) {
+    if (existingIds.has(seed.id)) {
+      continue;
+    }
+
     await db.query(
       `
       INSERT INTO foods (id, name, type, protein, carb, fat, calories, default_portion)
@@ -220,6 +313,63 @@ export async function createFoodItem(payload) {
       normalized.defaultPortion
     ]
   );
+
+  return fromDbRow(result.rows[0]);
+}
+
+export async function updateFoodItem(foodId, payload) {
+  const safeFoodId = String(foodId || "").trim();
+  if (!safeFoodId) {
+    throw new Error("Guncellenecek malzeme bulunamadi.");
+  }
+
+  const normalized = validatePayload(payload);
+
+  if (!useDatabase) {
+    const index = memoryFoods.findIndex((item) => item.id === safeFoodId);
+    if (index === -1) {
+      throw new Error("Guncellenecek malzeme bulunamadi.");
+    }
+
+    const updated = {
+      ...memoryFoods[index],
+      ...normalized,
+      id: safeFoodId
+    };
+
+    memoryFoods[index] = updated;
+    return updated;
+  }
+
+  const db = getPool();
+  const result = await db.query(
+    `
+    UPDATE foods
+    SET name = $2,
+        type = $3,
+        protein = $4,
+        carb = $5,
+        fat = $6,
+        calories = $7,
+        default_portion = $8
+    WHERE id = $1
+    RETURNING *
+    `,
+    [
+      safeFoodId,
+      normalized.name,
+      normalized.type,
+      normalized.protein,
+      normalized.carb,
+      normalized.fat,
+      normalized.calories,
+      normalized.defaultPortion
+    ]
+  );
+
+  if (!result.rowCount) {
+    throw new Error("Guncellenecek malzeme bulunamadi.");
+  }
 
   return fromDbRow(result.rows[0]);
 }

@@ -1,9 +1,38 @@
-import { useEffect, useMemo, useState } from "react";
-import IngredientSelector from "./components/IngredientSelector.jsx";
-import MacroSummary from "./components/MacroSummary.jsx";
-import MealCard from "./components/MealCard.jsx";
-import ProfileForm from "./components/ProfileForm.jsx";
-import { api } from "./lib/api.js";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import BottomNav from "./components/BottomNav.jsx";
+import CartDrawer from "./components/CartDrawer.jsx";
+import CheckoutInsightsDrawer from "./components/CheckoutInsightsDrawer.jsx";
+import ProfileAvatarMenu from "./components/ProfileAvatarMenu.jsx";
+import ToastMessage from "./components/ToastMessage.jsx";
+import { api, setAuthToken } from "./lib/api.js";
+import DashboardPage from "./pages/DashboardPage.jsx";
+import InventoryPage from "./pages/InventoryPage.jsx";
+import LandingPage from "./pages/LandingPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import PlannerPage from "./pages/PlannerPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
+import RecipesPage from "./pages/RecipesPage.jsx";
+import SettingsPage from "./pages/SettingsPage.jsx";
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function waterTargetByWeight(weightKg) {
+  const safeWeight = Math.max(40, Number(weightKg) || 78);
+  return Math.max(1200, Math.min(5000, Math.round(safeWeight * 35)));
+}
+
+function shiftIsoDate(isoDate, dayDelta) {
+  const base = new Date(`${isoDate}T12:00:00`);
+  if (Number.isNaN(base.getTime())) {
+    return todayIsoDate();
+  }
+
+  base.setDate(base.getDate() + dayDelta);
+  return base.toISOString().slice(0, 10);
+}
 
 function hasMinimumSelection(selectedIds, foods) {
   const selectedFoods = foods.filter((food) => selectedIds.includes(food.id));
@@ -23,8 +52,9 @@ function recalculateTotals(meals) {
   );
 }
 
-export default function App() {
+function AppShell({ user, onLogout, onNotify }) {
   const [foods, setFoods] = useState([]);
+  const [inventoryItems, setInventoryItems] = useState([]);
   const [selectedFoodIds, setSelectedFoodIds] = useState([]);
   const [profile, setProfile] = useState({
     weightKg: 78,
@@ -37,51 +67,158 @@ export default function App() {
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(false);
   const [ingredientBusy, setIngredientBusy] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [cartItems, setCartItems] = useState([]);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [checkoutFeedback, setCheckoutFeedback] = useState(null);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(todayIsoDate());
+  const [dayLog, setDayLog] = useState(null);
+  const [dayLogBusy, setDayLogBusy] = useState(false);
+  const [waterBusy, setWaterBusy] = useState(false);
+  const [inventoryBusy, setInventoryBusy] = useState(false);
   const [error, setError] = useState("");
+  const location = useLocation();
 
   useEffect(() => {
-    async function initFoods() {
+    async function initData() {
       try {
-        const data = await api.getFoods();
-        setFoods(data.foods);
-        setSelectedFoodIds(data.foods.map((food) => food.id));
+        const [foodsPayload, inventoryPayload] = await Promise.all([api.getFoods(), api.getInventory()]);
+        setFoods(foodsPayload.foods);
+        setInventoryItems(inventoryPayload.items);
+        setSelectedFoodIds(
+          inventoryPayload.items.filter((item) => Number(item.amountGrams) > 0).map((item) => item.id)
+        );
       } catch (initError) {
         setError(initError.message);
       }
     }
 
-    initFoods();
+    initData();
   }, []);
+
+  useEffect(() => {
+    async function loadDayLog() {
+      try {
+        const targetMl = waterTargetByWeight(profile.weightKg);
+        const payload = await api.getDayLog(selectedDate, targetMl);
+        setDayLog(payload);
+      } catch (loadError) {
+        setError(loadError.message);
+      }
+    }
+
+    loadDayLog();
+  }, [profile.weightKg, selectedDate]);
+
+  const selectableInventoryFoodIds = useMemo(
+    () => inventoryItems.filter((item) => Number(item.amountGrams) > 0).map((item) => item.id),
+    [inventoryItems]
+  );
+
+  const selectableInventoryFoodSet = useMemo(() => new Set(selectableInventoryFoodIds), [selectableInventoryFoodIds]);
+
+  useEffect(() => {
+    setSelectedFoodIds((current) => current.filter((id) => selectableInventoryFoodSet.has(id)));
+  }, [selectableInventoryFoodSet]);
 
   const canGenerate = useMemo(
     () => foods.length > 0 && hasMinimumSelection(selectedFoodIds, foods),
     [foods, selectedFoodIds]
   );
 
-  const selectedCount = selectedFoodIds.length;
-  const featuredMeals = plan?.meals?.slice(0, 3) ?? [];
+  function upsertCartItem(nextItem) {
+    setCartItems((current) => {
+      const foundIndex = current.findIndex((item) => item.id === nextItem.id);
 
-  const visualCards = featuredMeals.length
-    ? featuredMeals.map((meal) => {
-        const protein = meal.items.find((item) => item.type === "protein")?.name || "Protein";
-        const carb = meal.items.find((item) => item.type === "carb")?.name || "Carb";
-        return {
-          title: meal.title,
-          subtitle: `${protein} + ${carb}`,
-          meta: `${meal.macros.calories} kcal`
-        };
-      })
-    : [
-        { title: "Awake Plan", subtitle: "High Protein Flow", meta: "Balanced" },
-        { title: "Best Day", subtitle: "Lean + Carb Sync", meta: "Cut Mode" },
-        { title: "Beautiful", subtitle: "Premium Macro Mix", meta: "Smart" }
-      ];
+      if (foundIndex === -1) {
+        return [...current, { ...nextItem, qty: 1 }];
+      }
+
+      const cloned = [...current];
+      cloned[foundIndex] = {
+        ...cloned[foundIndex],
+        qty: cloned[foundIndex].qty + 1
+      };
+      return cloned;
+    });
+    setCartOpen(true);
+  }
+
+  function handleAddRecipeToCart(recipe) {
+    upsertCartItem({
+      id: `recipe_${recipe.id}`,
+      title: recipe.title,
+      calories: recipe.calories,
+      protein: recipe.protein,
+      carb: recipe.carb,
+      fat: recipe.fat,
+      ingredientIds: []
+    });
+  }
+
+  function handleAddMealToCart(meal) {
+    upsertCartItem({
+      id: `meal_${meal.id}`,
+      title: meal.title,
+      calories: Math.round(meal.macros?.calories || meal.calories || 0),
+      protein: Math.round(meal.macros?.protein || meal.protein || 0),
+      carb: Math.round(meal.macros?.carb || meal.carb || 0),
+      fat: Math.round(meal.macros?.fat || meal.fat || 0),
+      ingredientIds: Array.isArray(meal.items) ? meal.items.map((item) => item.id) : [],
+      ingredientBreakdown: Array.isArray(meal.items)
+        ? meal.items.map((item) => ({ id: item.id, grams: Number(item.grams) || 0 }))
+        : []
+    });
+  }
+
+  function increaseCartItem(itemId) {
+    setCartItems((current) =>
+      current.map((item) => (item.id === itemId ? { ...item, qty: item.qty + 1 } : item))
+    );
+  }
+
+  function decreaseCartItem(itemId) {
+    setCartItems((current) =>
+      current
+        .map((item) => (item.id === itemId ? { ...item, qty: item.qty - 1 } : item))
+        .filter((item) => item.qty > 0)
+    );
+  }
+
+  function removeCartItem(itemId) {
+    setCartItems((current) => current.filter((item) => item.id !== itemId));
+  }
+
+  function clearCartItems() {
+    setCartItems([]);
+  }
+
+  async function handleInventorySave(foodId, amountGrams) {
+    setInventoryBusy(true);
+    setError("");
+
+    try {
+      const payload = await api.upsertInventory({ foodId, amountGrams });
+      setInventoryItems(payload.items);
+      onNotify("Inventory guncellendi.", "success");
+    } catch (inventoryError) {
+      setError(inventoryError.message);
+      onNotify(inventoryError.message, "error");
+    } finally {
+      setInventoryBusy(false);
+    }
+  }
 
   function handleProfileChange(key, value) {
     setProfile((current) => ({ ...current, [key]: value }));
   }
 
   function toggleFood(foodId) {
+    if (!selectableInventoryFoodSet.has(foodId)) {
+      return;
+    }
+
     setSelectedFoodIds((current) =>
       current.includes(foodId) ? current.filter((id) => id !== foodId) : [...current, foodId]
     );
@@ -102,9 +239,26 @@ export default function App() {
     try {
       const payload = await api.addFood(foodInput);
       setFoods(payload.foods);
-      setSelectedFoodIds((current) => [...new Set([...current, payload.food.id])]);
+      onNotify("Malzeme eklendi.", "success");
     } catch (addError) {
       setError(addError.message);
+      onNotify(addError.message, "error");
+    } finally {
+      setIngredientBusy(false);
+    }
+  }
+
+  async function handleUpdateFood(foodId, foodInput) {
+    setIngredientBusy(true);
+    setError("");
+
+    try {
+      const payload = await api.updateFood(foodId, foodInput);
+      setFoods(payload.foods);
+      onNotify("Malzeme guncellendi.", "success");
+    } catch (updateError) {
+      setError(updateError.message);
+      onNotify(updateError.message, "error");
     } finally {
       setIngredientBusy(false);
     }
@@ -124,8 +278,11 @@ export default function App() {
         setPlan(null);
         setError("Silinen malzeme mevcut planda kullanildigi icin plan sifirlandi. Lutfen yeniden olustur.");
       }
+
+      onNotify("Malzeme silindi.", "success");
     } catch (removeError) {
       setError(removeError.message);
+      onNotify(removeError.message, "error");
     } finally {
       setIngredientBusy(false);
     }
@@ -142,14 +299,16 @@ export default function App() {
 
     try {
       const payload = await api.generatePlan({
-        profile,
+        profile: { ...profile, calorieMode: "auto" },
         selectedFoodIds,
         mealCount
       });
 
       setPlan(payload);
+      onNotify("Plan olusturuldu.", "success");
     } catch (planError) {
       setError(planError.message);
+      onNotify(planError.message, "error");
     } finally {
       setLoading(false);
     }
@@ -178,10 +337,129 @@ export default function App() {
         meals: updatedMeals,
         totals: recalculateTotals(updatedMeals)
       }));
+      onNotify("Meal guncellendi.", "success");
     } catch (swapError) {
       setError(swapError.message);
+      onNotify(swapError.message, "error");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleCheckoutCart() {
+    if (!cartItems.length) {
+      return;
+    }
+
+    setCheckoutBusy(true);
+    setError("");
+
+    try {
+      const payload = await api.checkoutPlan({
+        date: selectedDate,
+        cartItems,
+        selectedFoodIds,
+        profile
+      });
+
+      setCheckoutFeedback(payload.analysis);
+      setDayLog(payload.dayLog);
+      setInsightsOpen(true);
+      onNotify("Checkout analizi hazir.", "success");
+    } catch (checkoutError) {
+      setError(checkoutError.message);
+      onNotify(checkoutError.message, "error");
+    } finally {
+      setCheckoutBusy(false);
+    }
+  }
+
+  function handleMoveDate(dayDelta) {
+    setSelectedDate((current) => shiftIsoDate(current, dayDelta));
+  }
+
+  async function handleAddWater(amountMl) {
+    setWaterBusy(true);
+    setError("");
+
+    try {
+      const payload = await api.addWater({
+        date: selectedDate,
+        amountMl,
+        targetMl: waterTargetByWeight(profile.weightKg)
+      });
+
+      setDayLog((current) => ({
+        ...(current || {}),
+        date: selectedDate,
+        meals: current?.meals || { date: selectedDate, entries: [], totals: { calories: 0, protein: 0, carb: 0, fat: 0 } },
+        water: payload
+      }));
+      onNotify("Su kaydi eklendi.", "success");
+    } catch (waterError) {
+      setError(waterError.message);
+      onNotify(waterError.message, "error");
+    } finally {
+      setWaterBusy(false);
+    }
+  }
+
+  async function handleUpdateDayLogEntry(sourceId, entry) {
+    setDayLogBusy(true);
+    setError("");
+
+    try {
+      const payload = await api.updateDayLogEntry({
+        date: selectedDate,
+        sourceId,
+        entry,
+        targetMl: waterTargetByWeight(profile.weightKg)
+      });
+
+      setDayLog(payload);
+      onNotify("Daily tracking kaydi guncellendi.", "success");
+    } catch (entryError) {
+      setError(entryError.message);
+      onNotify(entryError.message, "error");
+    } finally {
+      setDayLogBusy(false);
+    }
+  }
+
+  async function handleAddDayLogEntry(entry) {
+    setDayLogBusy(true);
+    setError("");
+
+    try {
+      const payload = await api.addDayLogEntry({
+        date: selectedDate,
+        entry,
+        targetMl: waterTargetByWeight(profile.weightKg)
+      });
+
+      setDayLog(payload);
+      onNotify("Daily tracking kaydi eklendi.", "success");
+    } catch (entryError) {
+      setError(entryError.message);
+      onNotify(entryError.message, "error");
+    } finally {
+      setDayLogBusy(false);
+    }
+  }
+
+  async function handleDeleteDayLogEntry(sourceId) {
+    setDayLogBusy(true);
+    setError("");
+
+    try {
+      const payload = await api.deleteDayLogEntry(selectedDate, sourceId, waterTargetByWeight(profile.weightKg));
+      setDayLog(payload);
+      onNotify("Daily tracking kaydi silindi.", "success");
+    } catch (entryError) {
+      setError(entryError.message);
+      onNotify(entryError.message, "error");
+    } finally {
+      setDayLogBusy(false);
     }
   }
 
@@ -189,136 +467,227 @@ export default function App() {
     <main className="app-shell">
       <div className="atmosphere" />
 
-      <div className="app-layout">
-        <aside className="side-rail panel-glass">
-          <div className="brand-block">
-            <p className="kicker">Meal Planner + Macro Engine</p>
-            <h1 className="brand-title">Meal Forge</h1>
-            <p className="brand-copy">Premium planlama paneli ile ogunlerini hizli ve dengeli kur.</p>
-          </div>
+      <div className="mobile-shell">
+        <div className="app-top-actions">
+          <ProfileAvatarMenu user={user} onLogout={onLogout} />
+        </div>
 
-          <nav className="rail-nav">
-            <button type="button" className="rail-nav-item is-active">Workspace</button>
-            <button type="button" className="rail-nav-item">Ingredients</button>
-            <button type="button" className="rail-nav-item">Macro View</button>
-            <button type="button" className="rail-nav-item">Swap Assistant</button>
-          </nav>
+        {error ? <p className="error-banner">{error}</p> : null}
 
-          <div className="rail-stats">
-            <article className="rail-stat stat-green">
-              <span>Secilen</span>
-              <strong>{selectedCount}</strong>
-            </article>
-            <article className="rail-stat stat-blue">
-              <span>Ogun</span>
-              <strong>{mealCount}</strong>
-            </article>
-            <article className="rail-stat stat-orange">
-              <span>Hedef</span>
-              <strong>{profile.goal}</strong>
-            </article>
-            <article className="rail-stat stat-purple">
-              <span>Kalori</span>
-              <strong>{profile.calorieMode === "manual" ? profile.calories : "auto"}</strong>
-            </article>
-          </div>
-
-          <button className="generate-btn rail-generate" disabled={loading || !canGenerate} onClick={generatePlan}>
-            {loading ? "Hesaplaniyor..." : "Plan Olustur"}
-          </button>
-        </aside>
-
-        <section className="main-stage">
-          <header className="topbar panel-glass">
-            <div>
-              <p className="hero-kicker">Smart Nutrition Console</p>
-              <h2 className="hero-title">Meal Studio</h2>
-            </div>
-
-            <div className="topbar-actions">
-              <button type="button" className="icon-action" aria-label="notifications">•</button>
-              <button type="button" className="icon-action" aria-label="analytics">◦</button>
-              <button type="button" className="icon-action" aria-label="settings">◌</button>
-            </div>
-          </header>
-
-          <section className="feature-strip">
-            {visualCards.map((card, index) => (
-              <article key={`${card.title}_${index}`} className={`feature-card feature-tone-${index % 3}`}>
-                <div className="feature-overlay" />
-                <p className="feature-kicker">Featured</p>
-                <h3 className="feature-title">{card.title}</h3>
-                <p className="feature-subtitle">{card.subtitle}</p>
-                <span className="feature-meta">{card.meta}</span>
-              </article>
-            ))}
-          </section>
-
-          <header className="hero-panel panel-glass">
-            <div>
-              <p className="hero-kicker">Plan Studio</p>
-              <h2 className="hero-title">Modular Meal Intelligence</h2>
-              <p className="hero-copy">
-                Malzeme sec, hedefini belirle, sistem otomatik ogun kombinlerini optimize etsin.
-              </p>
-            </div>
-
-            <div className="hero-metrics">
-              <article className="metric-chip chip-green">
-                <span>Protein</span>
-                <strong>{plan?.dailyTarget?.protein ? `${Math.round(plan.dailyTarget.protein)}g` : "--"}</strong>
-              </article>
-              <article className="metric-chip chip-blue">
-                <span>Carb</span>
-                <strong>{plan?.dailyTarget?.carb ? `${Math.round(plan.dailyTarget.carb)}g` : "--"}</strong>
-              </article>
-              <article className="metric-chip chip-orange">
-                <span>Fat</span>
-                <strong>{plan?.dailyTarget?.fat ? `${Math.round(plan.dailyTarget.fat)}g` : "--"}</strong>
-              </article>
-              <article className="metric-chip chip-purple">
-                <span>Calories</span>
-                <strong>{plan?.dailyTarget?.calories || "--"}</strong>
-              </article>
-            </div>
-          </header>
-
-          {error ? <p className="error-banner">{error}</p> : null}
-
-          <section className="workspace-grid">
-            <div className="workspace-left">
-            <ProfileForm
-              profile={profile}
-              onChange={handleProfileChange}
-              mealCount={mealCount}
-              onMealCountChange={(value) => setMealCount(Math.max(3, Math.min(6, value || 4)))}
+        <div key={location.pathname} className="route-transition">
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route
+              path="/dashboard"
+              element={
+                <DashboardPage
+                  plan={plan}
+                  onAddToCart={handleAddMealToCart}
+                  selectedDate={selectedDate}
+                  onDateChange={setSelectedDate}
+                  onMoveDate={handleMoveDate}
+                  dayLog={dayLog}
+                  dayLogBusy={dayLogBusy}
+                  onAddDayLogEntry={handleAddDayLogEntry}
+                  onUpdateDayLogEntry={handleUpdateDayLogEntry}
+                  onDeleteDayLogEntry={handleDeleteDayLogEntry}
+                  onAddWater={handleAddWater}
+                  waterBusy={waterBusy}
+                />
+              }
             />
-            <IngredientSelector
-              foods={foods}
-              selectedIds={selectedFoodIds}
-              onToggle={toggleFood}
-              onAddFood={handleAddFood}
-              onRemoveFood={handleRemoveFood}
-              busy={ingredientBusy}
+            <Route
+              path="/planner"
+              element={
+                <PlannerPage
+                  profile={profile}
+                  mealCount={mealCount}
+                  setMealCount={setMealCount}
+                  foods={foods}
+                  selectableFoodIds={selectableInventoryFoodIds}
+                  selectedFoodIds={selectedFoodIds}
+                  toggleFood={toggleFood}
+                  addFood={handleAddFood}
+                  updateFood={handleUpdateFood}
+                  removeFood={handleRemoveFood}
+                  ingredientBusy={ingredientBusy}
+                  plan={plan}
+                  onSwap={handleSwap}
+                  onGenerate={generatePlan}
+                  loading={loading}
+                  canGenerate={canGenerate}
+                  onProfileChange={handleProfileChange}
+                  onAddMealToCart={handleAddMealToCart}
+                />
+              }
             />
-            </div>
+            <Route path="/recipes" element={<RecipesPage onAddToCart={handleAddRecipeToCart} />} />
+            <Route
+              path="/inventory"
+              element={
+                <InventoryPage
+                  items={inventoryItems}
+                  catalog={foods}
+                  onSaveAmount={handleInventorySave}
+                  busy={inventoryBusy}
+                />
+              }
+            />
+            <Route path="/profile" element={<ProfilePage user={user} />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </div>
 
-            <div className="workspace-right">
-              <MacroSummary totals={plan?.totals} target={plan?.dailyTarget} />
-            {!plan ? (
-                <section className="panel empty-panel">
-                <h2 className="panel-title">Plan Ciktisi</h2>
-                  <p className="panel-copy">
-                  Sag tarafta ogun kartlarini gormek icin once soldan malzemelerini sec ve plan olustur.
-                </p>
-              </section>
-            ) : (
-              plan.meals.map((meal) => <MealCard key={meal.id} meal={meal} onSwap={handleSwap} />)
-            )}
-          </div>
-          </section>
-        </section>
+        <BottomNav cartCount={cartItems.reduce((acc, item) => acc + item.qty, 0)} onOpenCart={() => setCartOpen(true)} />
       </div>
+
+      <CartDrawer
+        open={cartOpen}
+        items={cartItems}
+        onClose={() => setCartOpen(false)}
+        onIncrement={increaseCartItem}
+        onDecrement={decreaseCartItem}
+        onRemove={removeCartItem}
+        onClearAll={clearCartItems}
+        onCheckout={handleCheckoutCart}
+        onOpenInsights={() => setInsightsOpen(true)}
+        hasInsights={Boolean(checkoutFeedback)}
+        checkoutBusy={checkoutBusy}
+      />
+
+      <CheckoutInsightsDrawer open={insightsOpen} analysis={checkoutFeedback} onClose={() => setInsightsOpen(false)} />
     </main>
+  );
+}
+
+function AppRouter() {
+  const [authReady, setAuthReady] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [toast, setToast] = useState(null);
+  const toastTimerRef = useRef(null);
+
+  function showToast(message, type = "info") {
+    setToast({ message, type });
+    window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+    }, 2400);
+  }
+
+  useEffect(() => {
+    return () => {
+      window.clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    async function bootstrapAuth() {
+      const token = localStorage.getItem("mealforge_token");
+      if (!token) {
+        setAuthReady(true);
+        return;
+      }
+
+      setAuthToken(token);
+
+      try {
+        const payload = await api.me();
+        setUser(payload.user);
+      } catch (_error) {
+        localStorage.removeItem("mealforge_token");
+        setAuthToken(null);
+      } finally {
+        setAuthReady(true);
+      }
+    }
+
+    bootstrapAuth();
+  }, []);
+
+  async function handleLogin(credentials) {
+    setLoginBusy(true);
+    setLoginError("");
+
+    try {
+      const payload = await api.login(credentials);
+      setAuthToken(payload.token);
+      localStorage.setItem("mealforge_token", payload.token);
+      setUser(payload.user);
+      showToast("Giris basarili.", "success");
+    } catch (error) {
+      setLoginError(error.message);
+      showToast(error.message, "error");
+    } finally {
+      setLoginBusy(false);
+    }
+  }
+
+  async function handleRegister(credentials) {
+    setLoginBusy(true);
+    setLoginError("");
+
+    try {
+      const payload = await api.register(credentials);
+      setAuthToken(payload.token);
+      localStorage.setItem("mealforge_token", payload.token);
+      setUser(payload.user);
+      showToast("Kayit tamamlandi. Hos geldin!", "success");
+    } catch (error) {
+      setLoginError(error.message);
+      showToast(error.message, "error");
+    } finally {
+      setLoginBusy(false);
+    }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("mealforge_token");
+    setAuthToken(null);
+    setUser(null);
+    showToast("Cikis yapildi.", "success");
+  }
+
+  if (!authReady) {
+    return (
+      <main className="landing-shell">
+        <section className="panel panel-glass auth-card">
+          <p className="screen-subtitle">Session kontrol ediliyor...</p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <>
+      <ToastMessage toast={toast} />
+      <Routes>
+        <Route path="/landing" element={<LandingPage isAuthenticated={Boolean(user)} />} />
+        <Route
+          path="/login"
+          element={
+            user ? (
+              <Navigate to="/dashboard" replace />
+            ) : (
+              <LoginPage onLogin={handleLogin} onRegister={handleRegister} busy={loginBusy} error={loginError} />
+            )
+          }
+        />
+        <Route
+          path="/*"
+          element={user ? <AppShell user={user} onLogout={handleLogout} onNotify={showToast} /> : <Navigate to="/landing" replace />}
+        />
+      </Routes>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppRouter />
+    </BrowserRouter>
   );
 }

@@ -15,6 +15,10 @@ Meal Forge, secilen malzemelere ve kalori hedefine gore otomatik ogun ureten mod
 - Plan olusturma (ogun bazli makro dengesi)
 - Gunluk hedef vs gerceklesen makro takibi
 - Swap sistemi (meal icindeki protein/carb/fat degistirme)
+- Plan ciktisindan otomatik shopping list olusturma
+- Checkout analizi (kalori/makro/ingredient geri bildirimi)
+- Gun bazli meal kaydi ve gecmis gun takipleri
+- Gunluk su takibi
 
 ## Kurulum
 
@@ -62,6 +66,70 @@ Kontrol:
 - `DELETE /api/foods/:foodId`
 - `POST /api/generate`
 - `POST /api/swap`
+- `POST /api/shopping-list`
+- `POST /api/checkout`
+- `GET /api/day-log?date=YYYY-MM-DD&targetMl=2800`
+- `POST /api/water`
+- `GET /api/water?date=YYYY-MM-DD&targetMl=2800`
+
+### Shopping List Endpoint
+
+Mevcut plan ciktisindan market listesi olusturur, tip bazinda gruplayip toplam gram/makro degerlerini verir.
+
+Ornek istek:
+
+```json
+{
+	"plan": {
+		"meals": [
+			{
+				"id": "meal_1",
+				"items": [
+					{ "id": "chicken", "name": "Tavuk Gogus", "type": "protein", "grams": 140, "macros": { "protein": 43.4, "carb": 0, "fat": 5, "calories": 231 } },
+					{ "id": "rice", "name": "Pirinc", "type": "carb", "grams": 180, "macros": { "protein": 4.9, "carb": 50.4, "fat": 0.5, "calories": 234 } }
+				]
+			}
+		]
+	},
+	"dayCount": 3,
+	"roundTo": 5,
+	"excludeFoodIds": ["olive_oil"]
+}
+```
+
+Ornek cevap alanlari:
+
+- `summary`: ogun sayisi, gun sayisi, benzersiz urun sayisi
+- `totals`: toplam gram ve makrolar
+- `grouped`: protein/carb/fat bazli listeler
+- `items`: tek bir duz listede tum urunler
+- `checklistText`: kopyalanabilir markdown checklist
+
+### Checkout Analysis Endpoint
+
+`POST /api/checkout` cart'taki meal'leri analiz eder ve ayni anda secilen gun icin meal log kaydi olusturur.
+
+Beklenen body alanlari:
+
+- `cartItems`: `{ id, title, qty, calories, protein, carb, fat, ingredientIds }[]`
+- `selectedFoodIds`: secili ingredient id listesi
+- `profile`: hedef hesaplamasi icin profil bilgisi
+- `date`: `YYYY-MM-DD` (opsiyonel, verilmezse bugun)
+
+Cevapta:
+
+- `analysis`: score, hedef-fark tablosu, feedback maddeleri
+- `dayLog`: checkout sonrasi ilgili gunun meal + water ozeti
+
+### Gunluk Log Endpoint
+
+`GET /api/day-log` belirli bir tarih icin meal kayitlarini ve su durumunu dondurur.
+
+### Water Tracking Endpoint
+
+`POST /api/water` body: `{ date, amountMl, targetMl }`
+
+Gonderilen suyu gunluk loga ekler ve guncel toplam/target/progress degerini dondurur.
 
 ## Not
 
