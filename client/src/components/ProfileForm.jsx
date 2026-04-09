@@ -1,3 +1,5 @@
+import NumberStepper from "./NumberStepper.jsx";
+
 export default function ProfileForm({ profile, onChange, mealCount, onMealCountChange }) {
   const goals = [
     { value: "cut", label: "Fat Loss" },
@@ -5,15 +7,13 @@ export default function ProfileForm({ profile, onChange, mealCount, onMealCountC
     { value: "maintain", label: "Maintenance" }
   ];
 
-  const macroPresets = [
-    { id: "high", label: "High Protein", ratio: "40/30/30", targetGoal: "cut" },
-    { id: "balanced", label: "Balanced", ratio: "33/33/33", targetGoal: "maintain" },
-    { id: "keto", label: "Keto", ratio: "5/25/70", targetGoal: "bulk" }
-  ];
-
   const calories = Number(profile.calories || 2150);
   const minCalories = 1800;
   const maxCalories = 4200;
+
+  const safeWeight = Math.max(30, Number(profile.weightKg) || 30);
+  const safeHeight = Math.max(120, Number(profile.heightCm) || 120);
+  const safeMealCount = Math.max(3, Math.min(6, Number(mealCount) || 4));
 
   return (
     <section className="panel panel-glass">
@@ -57,51 +57,44 @@ export default function ProfileForm({ profile, onChange, mealCount, onMealCountC
         </div>
       </div>
 
-      <h3 className="group-title macro-title">Macro Profile</h3>
-      <div className="macro-profile-grid">
-        {macroPresets.map((preset) => (
-          <button
-            key={preset.id}
-            type="button"
-            className={`macro-profile-card ${profile.goal === preset.targetGoal ? "macro-profile-card-active" : ""}`}
-            onClick={() => onChange("goal", preset.targetGoal)}
-          >
-            <span>{preset.label}</span>
-            <i />
-            <small>{preset.ratio}</small>
-          </button>
-        ))}
-      </div>
-
       <div className="compact-form-grid">
         <label className="field">
           <span>Weight (kg)</span>
-          <input
-            type="number"
-            min="30"
-            value={profile.weightKg}
-            onChange={(event) => onChange("weightKg", Number(event.target.value))}
+          <NumberStepper
+            value={safeWeight}
+            min={30}
+            step={1}
+            onChange={(next) => onChange("weightKg", next)}
+            inputAriaLabel="Weight"
+            increaseAriaLabel="Weight arttir"
+            decreaseAriaLabel="Weight azalt"
           />
         </label>
 
         <label className="field">
           <span>Height (cm)</span>
-          <input
-            type="number"
-            min="120"
-            value={profile.heightCm}
-            onChange={(event) => onChange("heightCm", Number(event.target.value))}
+          <NumberStepper
+            value={safeHeight}
+            min={120}
+            step={1}
+            onChange={(next) => onChange("heightCm", next)}
+            inputAriaLabel="Height"
+            increaseAriaLabel="Height arttir"
+            decreaseAriaLabel="Height azalt"
           />
         </label>
 
         <label className="field field-full">
           <span>Meal Count</span>
-          <input
-            type="number"
-            min="3"
-            max="6"
-            value={mealCount}
-            onChange={(event) => onMealCountChange(Number(event.target.value || 4))}
+          <NumberStepper
+            value={safeMealCount}
+            min={3}
+            max={6}
+            step={1}
+            onChange={(next) => onMealCountChange(next)}
+            inputAriaLabel="Meal count"
+            increaseAriaLabel="Meal count arttir"
+            decreaseAriaLabel="Meal count azalt"
           />
         </label>
       </div>

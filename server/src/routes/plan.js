@@ -13,6 +13,7 @@ import {
   listDashboardMeals,
   updateDashboardMeal
 } from "../data/dashboardMeals.js";
+import { listRecipeCatalog } from "../data/recipes.js";
 import { getInventoryMap, listUserInventory, upsertInventoryItem } from "../data/inventory.js";
 import { analyzeCheckout, normalizeCartItems } from "../lib/checkout.js";
 import { createFoodItem, getFoodsByIds, listFoods, removeFoodItemById, updateFoodItem } from "../data/foods.js";
@@ -29,6 +30,16 @@ planRouter.get("/foods", async (_req, res) => {
   try {
     const foods = await listFoods();
     res.json({ foods });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+planRouter.get("/recipes", async (_req, res) => {
+  try {
+    const foods = await listFoods();
+    const payload = listRecipeCatalog(foods);
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

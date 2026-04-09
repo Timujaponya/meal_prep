@@ -33,6 +33,7 @@ export const api = {
   register: (body) => request("/auth/register", { method: "POST", body: JSON.stringify(body) }),
   me: () => request("/auth/me"),
   getFoods: () => request("/foods"),
+  getRecipes: () => request("/recipes"),
   addFood: (body) => request("/foods", { method: "POST", body: JSON.stringify(body) }),
   updateFood: (foodId, body) => request(`/foods/${foodId}`, { method: "PUT", body: JSON.stringify(body) }),
   removeFood: (foodId) => request(`/foods/${foodId}`, { method: "DELETE" }),

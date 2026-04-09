@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import MacroSummary from "../components/MacroSummary.jsx";
+import NumberStepper from "../components/NumberStepper.jsx";
 import { dashboardMealFallback } from "../data/recipes.js";
 
 const INITIAL_TRACKING_FORM = {
@@ -187,76 +188,96 @@ export default function DashboardPage({
 
             <label className="field">
               <span>Qty</span>
-              <input
-                type="number"
-                min="1"
+              <NumberStepper
+                compact
                 value={trackingForm.quantity}
-                onChange={(event) =>
+                min={1}
+                step={1}
+                onChange={(next) =>
                   setTrackingForm((current) => ({
                     ...current,
-                    quantity: Math.max(1, Number(event.target.value) || 1)
+                    quantity: Math.max(1, next)
                   }))
                 }
+                inputAriaLabel="Qty"
+                increaseAriaLabel="Qty arttir"
+                decreaseAriaLabel="Qty azalt"
               />
             </label>
 
             <label className="field">
               <span>Kalori</span>
-              <input
-                type="number"
-                min="0"
+              <NumberStepper
+                compact
                 value={trackingForm.calories}
-                onChange={(event) =>
+                min={0}
+                step={1}
+                onChange={(next) =>
                   setTrackingForm((current) => ({
                     ...current,
-                    calories: Math.max(0, Number(event.target.value) || 0)
+                    calories: Math.max(0, next)
                   }))
                 }
+                inputAriaLabel="Kalori"
+                increaseAriaLabel="Kalori arttir"
+                decreaseAriaLabel="Kalori azalt"
               />
             </label>
 
             <label className="field">
               <span>Protein</span>
-              <input
-                type="number"
-                min="0"
+              <NumberStepper
+                compact
                 value={trackingForm.protein}
-                onChange={(event) =>
+                min={0}
+                step={1}
+                onChange={(next) =>
                   setTrackingForm((current) => ({
                     ...current,
-                    protein: Math.max(0, Number(event.target.value) || 0)
+                    protein: Math.max(0, next)
                   }))
                 }
+                inputAriaLabel="Protein"
+                increaseAriaLabel="Protein arttir"
+                decreaseAriaLabel="Protein azalt"
               />
             </label>
 
             <label className="field">
               <span>Carb</span>
-              <input
-                type="number"
-                min="0"
+              <NumberStepper
+                compact
                 value={trackingForm.carb}
-                onChange={(event) =>
+                min={0}
+                step={1}
+                onChange={(next) =>
                   setTrackingForm((current) => ({
                     ...current,
-                    carb: Math.max(0, Number(event.target.value) || 0)
+                    carb: Math.max(0, next)
                   }))
                 }
+                inputAriaLabel="Carb"
+                increaseAriaLabel="Carb arttir"
+                decreaseAriaLabel="Carb azalt"
               />
             </label>
 
             <label className="field">
               <span>Fat</span>
-              <input
-                type="number"
-                min="0"
+              <NumberStepper
+                compact
                 value={trackingForm.fat}
-                onChange={(event) =>
+                min={0}
+                step={1}
+                onChange={(next) =>
                   setTrackingForm((current) => ({
                     ...current,
-                    fat: Math.max(0, Number(event.target.value) || 0)
+                    fat: Math.max(0, next)
                   }))
                 }
+                inputAriaLabel="Fat"
+                increaseAriaLabel="Fat arttir"
+                decreaseAriaLabel="Fat azalt"
               />
             </label>
 
@@ -333,74 +354,85 @@ export default function DashboardPage({
                           }
                           disabled={dayLogBusy}
                         />
-                        <input
-                          type="number"
-                          min="1"
-                          placeholder="Qty"
+                        <NumberStepper
+                          compact
                           value={editingTrackingForm.quantity}
-                          onChange={(event) =>
+                          min={1}
+                          step={1}
+                          onChange={(next) =>
                             setEditingTrackingForm((current) => ({
                               ...current,
-                              quantity: Math.max(1, Number(event.target.value) || 1)
+                              quantity: Math.max(1, next)
                             }))
                           }
                           disabled={dayLogBusy}
+                          inputAriaLabel="Qty"
+                          increaseAriaLabel="Qty arttir"
+                          decreaseAriaLabel="Qty azalt"
                         />
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          placeholder="Kalori/Birim"
+                        <NumberStepper
+                          compact
                           value={editingTrackingForm.calories}
-                          onChange={(event) =>
+                          min={0}
+                          step={0.1}
+                          onChange={(next) =>
                             setEditingTrackingForm((current) => ({
                               ...current,
-                              calories: Math.max(0, Number(event.target.value) || 0)
+                              calories: Math.max(0, next)
                             }))
                           }
                           disabled={dayLogBusy}
+                          inputAriaLabel="Kalori/Birim"
+                          increaseAriaLabel="Kalori arttir"
+                          decreaseAriaLabel="Kalori azalt"
                         />
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          placeholder="Protein/Birim"
+                        <NumberStepper
+                          compact
                           value={editingTrackingForm.protein}
-                          onChange={(event) =>
+                          min={0}
+                          step={0.1}
+                          onChange={(next) =>
                             setEditingTrackingForm((current) => ({
                               ...current,
-                              protein: Math.max(0, Number(event.target.value) || 0)
+                              protein: Math.max(0, next)
                             }))
                           }
                           disabled={dayLogBusy}
+                          inputAriaLabel="Protein/Birim"
+                          increaseAriaLabel="Protein arttir"
+                          decreaseAriaLabel="Protein azalt"
                         />
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          placeholder="Carb/Birim"
+                        <NumberStepper
+                          compact
                           value={editingTrackingForm.carb}
-                          onChange={(event) =>
+                          min={0}
+                          step={0.1}
+                          onChange={(next) =>
                             setEditingTrackingForm((current) => ({
                               ...current,
-                              carb: Math.max(0, Number(event.target.value) || 0)
+                              carb: Math.max(0, next)
                             }))
                           }
                           disabled={dayLogBusy}
+                          inputAriaLabel="Carb/Birim"
+                          increaseAriaLabel="Carb arttir"
+                          decreaseAriaLabel="Carb azalt"
                         />
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          placeholder="Fat/Birim"
+                        <NumberStepper
+                          compact
                           value={editingTrackingForm.fat}
-                          onChange={(event) =>
+                          min={0}
+                          step={0.1}
+                          onChange={(next) =>
                             setEditingTrackingForm((current) => ({
                               ...current,
-                              fat: Math.max(0, Number(event.target.value) || 0)
+                              fat: Math.max(0, next)
                             }))
                           }
                           disabled={dayLogBusy}
+                          inputAriaLabel="Fat/Birim"
+                          increaseAriaLabel="Fat arttir"
+                          decreaseAriaLabel="Fat azalt"
                         />
                       </div>
                       <button

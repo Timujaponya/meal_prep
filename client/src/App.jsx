@@ -153,7 +153,10 @@ function AppShell({ user, onLogout, onNotify }) {
       protein: recipe.protein,
       carb: recipe.carb,
       fat: recipe.fat,
-      ingredientIds: []
+      ingredientIds: Array.isArray(recipe.ingredients) ? recipe.ingredients.map((entry) => entry.foodId) : [],
+      ingredientBreakdown: Array.isArray(recipe.ingredients)
+        ? recipe.ingredients.map((entry) => ({ id: entry.foodId, grams: Number(entry.grams) || 0 }))
+        : []
     });
   }
 

@@ -1,4 +1,7 @@
+import fs from "fs";
+import path from "path";
 import { Pool } from "pg";
+import { fileURLToPath } from "url";
 
 const baseSeedFoodItems = [
   { id: "chicken", name: "Tavuk Gogus", type: "protein", protein: 31, carb: 0, fat: 3.6, calories: 165, defaultPortion: 120 },
@@ -108,7 +111,77 @@ const generatedSeedFoodItems = [
   ...buildGeneratedFoodsByType("fat", generatedCatalogConfig.fat)
 ];
 
-const seedFoodItems = [...baseSeedFoodItems, ...generatedSeedFoodItems];
+const currentFilePath = fileURLToPath(import.meta.url);
+const currentDirPath = path.dirname(currentFilePath);
+const defaultCatalogPath = path.resolve(currentDirPath, "catalog", "foods.usda.json");
+
+function normalizeCatalogItem(item) {
+  if (!item || typeof item !== "object") {
+    return null;
+  }
+
+  const id = String(item.id || "").trim();
+  const name = String(item.name || "").trim();
+  const type = String(item.type || "").trim();
+  const validTypes = new Set(["protein", "carb", "fat"]);
+
+  if (!id || !name || !validTypes.has(type)) {
+    return null;
+  }
+
+  const protein = Math.max(0, Number(item.protein) || 0);
+  const carb = Math.max(0, Number(item.carb) || 0);
+  const fat = Math.max(0, Number(item.fat) || 0);
+  const caloriesFromMacros = protein * 4 + carb * 4 + fat * 9;
+  const calories = Math.max(0, Number(item.calories) || Math.round(caloriesFromMacros));
+  const defaultPortion = Math.max(1, Math.round(Number(item.defaultPortion) || 100));
+
+  return {
+    id,
+    name,
+    type,
+    protein: Math.round(protein * 10) / 10,
+    carb: Math.round(carb * 10) / 10,
+    fat: Math.round(fat * 10) / 10,
+    calories: Math.round(calories),
+    defaultPortion
+  };
+}
+
+function loadExternalCatalogItems() {
+  const catalogPath = process.env.FOOD_CATALOG_PATH || defaultCatalogPath;
+  if (!fs.existsSync(catalogPath)) {
+    return [];
+  }
+
+  try {
+    const raw = fs.readFileSync(catalogPath, "utf8");
+    const parsed = JSON.parse(raw);
+    const records = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : [];
+
+    return records.map(normalizeCatalogItem).filter(Boolean);
+  } catch (error) {
+    console.warn(`Food catalog dosyasi okunamadi (${catalogPath}):`, error.message);
+    return [];
+  }
+}
+
+function withCoreFallback(catalogItems) {
+  const byId = new Map(catalogItems.map((item) => [item.id, item]));
+
+  for (const core of baseSeedFoodItems) {
+    if (!byId.has(core.id)) {
+      byId.set(core.id, core);
+    }
+  }
+
+  return Array.from(byId.values());
+}
+
+const externalCatalogItems = loadExternalCatalogItems();
+const seedFoodItems = externalCatalogItems.length
+  ? withCoreFallback(externalCatalogItems)
+  : [...baseSeedFoodItems, ...generatedSeedFoodItems];
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const useDatabase = Boolean(DATABASE_URL);

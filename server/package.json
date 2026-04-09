@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "node --watch src/index.js",
-    "start": "node src/index.js"
+    "start": "node src/index.js",
+    "import:usda": "node scripts/import-usda-foods.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^17.4.1",
     "express": "^4.21.1",
     "pg": "^8.13.1"
   }

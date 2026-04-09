@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { recipeCards, recipeCategories, recipeSections } from "../data/recipes.js";
+import { useEffect, useMemo, useState } from "react";
+import { recipeCards as fallbackCards, recipeCategories as fallbackCategories, recipeSections as fallbackSections } from "../data/recipes.js";
+import { api } from "../lib/api.js";
 
 function RecipeHeroCard({ recipe, onAdd }) {
   return (
@@ -51,19 +52,59 @@ function RecipeListItem({ recipe, onAdd }) {
 
 export default function RecipesPage({ onAddToCart }) {
   const [query, setQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [recipes, setRecipes] = useState(fallbackCards);
+  const [categories, setCategories] = useState(fallbackCategories);
+  const [sections, setSections] = useState(fallbackSections);
+  const [activeCategory, setActiveCategory] = useState(fallbackCategories[0] || "all");
   const [showAllRecommended, setShowAllRecommended] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
 
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadRecipeCatalog() {
+      try {
+        const payload = await api.getRecipes();
+        if (!mounted) {
+          return;
+        }
+
+        const nextRecipes = Array.isArray(payload?.recipes) && payload.recipes.length ? payload.recipes : fallbackCards;
+        const nextCategories = Array.isArray(payload?.categories) && payload.categories.length ? payload.categories : fallbackCategories;
+        const nextSections = Array.isArray(payload?.sections) ? payload.sections : fallbackSections;
+
+        setRecipes(nextRecipes);
+        setCategories(nextCategories);
+        setSections(nextSections);
+
+        setActiveCategory((current) => (nextCategories.includes(current) ? current : nextCategories[0] || "all"));
+      } catch (_error) {
+        if (!mounted) {
+          return;
+        }
+
+        setRecipes(fallbackCards);
+        setCategories(fallbackCategories);
+        setSections(fallbackSections);
+      }
+    }
+
+    loadRecipeCatalog();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const filtered = useMemo(() => {
-    return recipeCards.filter((recipe) => {
+    return recipes.filter((recipe) => {
       const byCategory = activeCategory === "all" ? true : recipe.category === activeCategory;
       const byText = query
         ? `${recipe.title} ${recipe.tag}`.toLowerCase().includes(query.toLowerCase())
         : true;
       return byCategory && byText;
     });
-  }, [query, activeCategory]);
+  }, [recipes, query, activeCategory]);
 
   return (
     <section className="page-screen">
@@ -82,7 +123,7 @@ export default function RecipesPage({ onAddToCart }) {
         </div>
 
         <div className="status-chip-row">
-          <span className="status-chip status-chip-green">500+ Recipes</span>
+          <span className="status-chip status-chip-green">{recipes.length} Recipes</span>
           <span className="status-chip">Daily Picks</span>
           <span className="status-chip">Quick Prep</span>
         </div>
@@ -97,7 +138,7 @@ export default function RecipesPage({ onAddToCart }) {
         />
 
         <div className="category-row">
-          {recipeCategories.map((category) => (
+          {categories.map((category) => (
             <button
               key={category}
               type="button"
@@ -125,9 +166,9 @@ export default function RecipesPage({ onAddToCart }) {
         </div>
       </section>
 
-      {recipeSections.map((section) => {
+      {sections.map((section) => {
         const items = section.items
-          .map((id) => recipeCards.find((recipe) => recipe.id === id))
+          .map((id) => recipes.find((recipe) => recipe.id === id))
           .filter(Boolean);
 
         const isExpanded = Boolean(expandedSections[section.id]);

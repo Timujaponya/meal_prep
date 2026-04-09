@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import NumberStepper from "../components/NumberStepper.jsx";
 
 export default function InventoryPage({ items = [], catalog = [], onSaveAmount, busy }) {
   const [localAmounts, setLocalAmounts] = useState({});
@@ -95,12 +96,16 @@ export default function InventoryPage({ items = [], catalog = [], onSaveAmount, 
             ))}
           </select>
 
-          <input
-            type="number"
-            min="1"
+          <NumberStepper
+            compact
             value={newAmount}
-            onChange={(event) => setNewAmount(Math.max(1, Number(event.target.value) || 1))}
-            aria-label="Eklenecek miktar"
+            min={1}
+            step={1}
+            className="inventory-add-stepper"
+            onChange={(next) => setNewAmount(Math.max(1, next))}
+            inputAriaLabel="Eklenecek miktar"
+            increaseAriaLabel="Miktari arttir"
+            decreaseAriaLabel="Miktari azalt"
           />
 
           <button type="button" className="generate-btn" disabled={busy || !selectedFoodId} onClick={addItem}>
@@ -136,16 +141,21 @@ export default function InventoryPage({ items = [], catalog = [], onSaveAmount, 
 
                 <div className="inventory-input-wrap">
                   <span className="inventory-unit">Miktar (g)</span>
-                  <input
-                    type="number"
-                    min="0"
+                  <NumberStepper
+                    compact
                     value={amountFor(item)}
-                    onChange={(event) =>
+                    min={0}
+                    step={1}
+                    className="inventory-row-stepper"
+                    onChange={(next) =>
                       setLocalAmounts((current) => ({
                         ...current,
-                        [item.id]: Math.max(0, Number(event.target.value) || 0)
+                        [item.id]: Math.max(0, next)
                       }))
                     }
+                    inputAriaLabel={`${item.name} miktar`}
+                    increaseAriaLabel={`${item.name} miktar arttir`}
+                    decreaseAriaLabel={`${item.name} miktar azalt`}
                   />
                   <button type="button" className="swap-btn" disabled={busy} onClick={() => saveItem(item)}>
                     Kaydet

@@ -105,6 +105,7 @@ body {
   flex-direction: column;
   justify-content: space-between;
   gap: 10px;
+  margin-top: 20px;
 }
 
 .screen-top-main {
@@ -116,10 +117,7 @@ body {
 }
 
 .screen-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 2px;
+  display: none;
 }
 
 .action-dot {
@@ -159,6 +157,10 @@ body {
   place-items: center;
   font-family: "Sora", sans-serif;
   font-size: 0.95rem;
+  margin-top: 15px;
+}
+
+.landing-profile-btn {
   margin-top: 44px;
 }
 
@@ -204,11 +206,13 @@ body {
 }
 
 .app-top-actions {
+  position: absolute;
+  top: 22px;
+  right: 18px;
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 2px;
-  position: relative;
-  z-index: 5;
+  margin: 0;
+  z-index: 8;
 }
 
 .profile-menu-wrap {
@@ -265,13 +269,13 @@ body {
 
 .inventory-add-grid {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 120px auto;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(180px, 1fr) minmax(170px, 190px) auto;
   gap: 8px;
   align-items: center;
 }
 
-.inventory-add-grid input,
-.inventory-add-grid select {
+.inventory-add-grid > input,
+.inventory-add-grid > select {
   border: 1px solid var(--line);
   border-radius: 9px;
   background: rgba(255, 255, 255, 0.05);
@@ -321,7 +325,7 @@ body {
   text-align: right;
 }
 
-.inventory-input-wrap input {
+.inventory-input-wrap input:not(.number-stepper-input) {
   width: 96px;
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -776,6 +780,134 @@ body {
 .field select:focus {
   border-color: rgba(93, 176, 255, 0.84);
   box-shadow: 0 0 0 3px rgba(93, 176, 255, 0.22);
+}
+
+.field input[type="number"]:not(.number-stepper-input) {
+  padding-right: 36px;
+}
+
+.field input[type="number"]:not(.number-stepper-input)::-webkit-outer-spin-button,
+.field input[type="number"]:not(.number-stepper-input)::-webkit-inner-spin-button {
+  -webkit-appearance: auto;
+  margin: 0;
+  width: 24px;
+  border-left: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(93, 176, 255, 0.14), rgba(201, 247, 45, 0.12));
+  opacity: 1;
+  cursor: pointer;
+}
+
+.field input[type="number"]:not(.number-stepper-input)::-webkit-outer-spin-button:hover,
+.field input[type="number"]:not(.number-stepper-input)::-webkit-inner-spin-button:hover {
+  background: linear-gradient(180deg, rgba(93, 176, 255, 0.24), rgba(201, 247, 45, 0.2));
+}
+
+.number-stepper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+  width: 100%;
+}
+
+.number-stepper-input {
+  min-height: 50px;
+  padding-right: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.number-stepper-input::-webkit-outer-spin-button,
+.number-stepper-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.number-stepper-actions {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+}
+
+.number-stepper-btn {
+  width: 48px;
+  min-height: 24px;
+  border: 1px solid rgba(93, 176, 255, 0.46);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(93, 176, 255, 0.18), rgba(201, 247, 45, 0.15));
+  color: #f4ffe0;
+  font-family: "Sora", sans-serif;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+  transition: transform 140ms ease, filter 140ms ease, border-color 140ms ease;
+}
+
+.number-stepper-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  border-color: rgba(201, 247, 45, 0.6);
+}
+
+.number-stepper-btn:active {
+  transform: translateY(0);
+  filter: brightness(0.95);
+}
+
+.number-stepper-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(93, 176, 255, 0.26);
+}
+
+.number-stepper-btn:disabled {
+  opacity: 0.46;
+  cursor: not-allowed;
+  transform: none;
+  filter: none;
+}
+
+.number-stepper-compact {
+  gap: 6px;
+}
+
+.number-stepper-compact .number-stepper-input {
+  min-height: 40px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  padding: 7px 8px;
+}
+
+.number-stepper-compact .number-stepper-actions {
+  gap: 6px;
+}
+
+.number-stepper-compact .number-stepper-btn {
+  width: 40px;
+  min-height: 17px;
+  font-size: 0.88rem;
+  border-radius: 8px;
+}
+
+.inventory-add-stepper {
+  min-width: 0;
+}
+
+.inventory-add-grid > .generate-btn {
+  min-width: 86px;
+  white-space: nowrap;
+}
+
+.inventory-row-stepper {
+  width: 150px;
+}
+
+.tracking-inline-edit-grid .number-stepper {
+  min-width: 0;
 }
 
 .ingredient-toolbar {
@@ -1445,7 +1577,7 @@ body {
   grid-column: 1 / -1;
 }
 
-.tracking-entry-actions input {
+.tracking-entry-actions input:not(.number-stepper-input) {
   width: 72px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1454,7 +1586,7 @@ body {
   padding: 6px 8px;
 }
 
-.tracking-inline-edit-grid input {
+.tracking-inline-edit-grid input:not(.number-stepper-input) {
   width: 100%;
 }
 

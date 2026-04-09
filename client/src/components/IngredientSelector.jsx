@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import NumberStepper from "./NumberStepper.jsx";
 
 const INITIAL_FORM = {
   name: "",
@@ -148,44 +149,53 @@ export default function IngredientSelector({
 
               <label className="field">
                 <span>Protein (100g)</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
+                <NumberStepper
                   value={form.protein}
-                  onChange={(event) => updateForm("protein", Number(event.target.value))}
+                  min={0}
+                  step={0.1}
+                  onChange={(next) => updateForm("protein", next)}
+                  inputAriaLabel="Protein"
+                  increaseAriaLabel="Protein arttir"
+                  decreaseAriaLabel="Protein azalt"
                 />
               </label>
 
               <label className="field">
                 <span>Carb (100g)</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
+                <NumberStepper
                   value={form.carb}
-                  onChange={(event) => updateForm("carb", Number(event.target.value))}
+                  min={0}
+                  step={0.1}
+                  onChange={(next) => updateForm("carb", next)}
+                  inputAriaLabel="Carb"
+                  increaseAriaLabel="Carb arttir"
+                  decreaseAriaLabel="Carb azalt"
                 />
               </label>
 
               <label className="field">
                 <span>Yag (100g)</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
+                <NumberStepper
                   value={form.fat}
-                  onChange={(event) => updateForm("fat", Number(event.target.value))}
+                  min={0}
+                  step={0.1}
+                  onChange={(next) => updateForm("fat", next)}
+                  inputAriaLabel="Yag"
+                  increaseAriaLabel="Yag arttir"
+                  decreaseAriaLabel="Yag azalt"
                 />
               </label>
 
               <label className="field">
                 <span>Porsiyon (g)</span>
-                <input
-                  type="number"
-                  min="1"
+                <NumberStepper
                   value={form.defaultPortion}
-                  onChange={(event) => updateForm("defaultPortion", Number(event.target.value))}
+                  min={1}
+                  step={1}
+                  onChange={(next) => updateForm("defaultPortion", next)}
+                  inputAriaLabel="Porsiyon"
+                  increaseAriaLabel="Porsiyon arttir"
+                  decreaseAriaLabel="Porsiyon azalt"
                 />
               </label>
             </div>
