@@ -113,7 +113,7 @@ const generatedSeedFoodItems = [
 
 const currentFilePath = fileURLToPath(import.meta.url);
 const currentDirPath = path.dirname(currentFilePath);
-const defaultCatalogPath = path.resolve(currentDirPath, "catalog", "foods.usda.json");
+const defaultCatalogPath = path.resolve(currentDirPath, "catalog", "foods.curated.json");
 
 function normalizeCatalogItem(item) {
   if (!item || typeof item !== "object") {
@@ -166,22 +166,8 @@ function loadExternalCatalogItems() {
   }
 }
 
-function withCoreFallback(catalogItems) {
-  const byId = new Map(catalogItems.map((item) => [item.id, item]));
-
-  for (const core of baseSeedFoodItems) {
-    if (!byId.has(core.id)) {
-      byId.set(core.id, core);
-    }
-  }
-
-  return Array.from(byId.values());
-}
-
 const externalCatalogItems = loadExternalCatalogItems();
-const seedFoodItems = externalCatalogItems.length
-  ? withCoreFallback(externalCatalogItems)
-  : [...baseSeedFoodItems, ...generatedSeedFoodItems];
+const seedFoodItems = externalCatalogItems.length ? externalCatalogItems : [...baseSeedFoodItems, ...generatedSeedFoodItems];
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const useDatabase = Boolean(DATABASE_URL);

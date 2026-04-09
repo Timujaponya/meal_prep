@@ -34,6 +34,9 @@ export const api = {
   me: () => request("/auth/me"),
   getFoods: () => request("/foods"),
   getRecipes: () => request("/recipes"),
+  resolveFoodQuery: (query) => request("/foods/resolve", { method: "POST", body: JSON.stringify({ query }) }),
+  resolvePortionExpression: (expression) =>
+    request("/foods/portion-resolve", { method: "POST", body: JSON.stringify({ expression }) }),
   addFood: (body) => request("/foods", { method: "POST", body: JSON.stringify(body) }),
   updateFood: (foodId, body) => request(`/foods/${foodId}`, { method: "PUT", body: JSON.stringify(body) }),
   removeFood: (foodId) => request(`/foods/${foodId}`, { method: "DELETE" }),

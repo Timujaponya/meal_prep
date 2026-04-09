@@ -54,6 +54,7 @@ function recalculateTotals(meals) {
 
 function AppShell({ user, onLogout, onNotify }) {
   const [foods, setFoods] = useState([]);
+  const [recipesCatalog, setRecipesCatalog] = useState([]);
   const [inventoryItems, setInventoryItems] = useState([]);
   const [selectedFoodIds, setSelectedFoodIds] = useState([]);
   const [profile, setProfile] = useState({
@@ -83,9 +84,14 @@ function AppShell({ user, onLogout, onNotify }) {
   useEffect(() => {
     async function initData() {
       try {
-        const [foodsPayload, inventoryPayload] = await Promise.all([api.getFoods(), api.getInventory()]);
+        const [foodsPayload, inventoryPayload, recipesPayload] = await Promise.all([
+          api.getFoods(),
+          api.getInventory(),
+          api.getRecipes()
+        ]);
         setFoods(foodsPayload.foods);
         setInventoryItems(inventoryPayload.items);
+        setRecipesCatalog(Array.isArray(recipesPayload?.recipes) ? recipesPayload.recipes : []);
         setSelectedFoodIds(
           inventoryPayload.items.filter((item) => Number(item.amountGrams) > 0).map((item) => item.id)
         );
@@ -96,6 +102,15 @@ function AppShell({ user, onLogout, onNotify }) {
 
     initData();
   }, []);
+
+  async function refreshRecipesCatalog() {
+    try {
+      const payload = await api.getRecipes();
+      setRecipesCatalog(Array.isArray(payload?.recipes) ? payload.recipes : []);
+    } catch (_error) {
+      // Dashboard fallback recipes will be used on failures.
+    }
+  }
 
   useEffect(() => {
     async function loadDayLog() {
@@ -213,6 +228,11 @@ function AppShell({ user, onLogout, onNotify }) {
     }
   }
 
+  async function handleResolveInventoryPortion(expression) {
+    const payload = await api.resolvePortionExpression(expression);
+    return payload.resolved;
+  }
+
   function handleProfileChange(key, value) {
     setProfile((current) => ({ ...current, [key]: value }));
   }
@@ -242,7 +262,8 @@ function AppShell({ user, onLogout, onNotify }) {
     try {
       const payload = await api.addFood(foodInput);
       setFoods(payload.foods);
-      onNotify("Malzeme eklendi.", "success");
+      await refreshRecipesCatalog();
+      onNotify(payload.deduplicated ? "Malzeme mevcut ingredient ile eslendi." : "Malzeme eklendi.", "success");
     } catch (addError) {
       setError(addError.message);
       onNotify(addError.message, "error");
@@ -258,6 +279,7 @@ function AppShell({ user, onLogout, onNotify }) {
     try {
       const payload = await api.updateFood(foodId, foodInput);
       setFoods(payload.foods);
+      await refreshRecipesCatalog();
       onNotify("Malzeme guncellendi.", "success");
     } catch (updateError) {
       setError(updateError.message);
@@ -275,6 +297,7 @@ function AppShell({ user, onLogout, onNotify }) {
       const shouldResetPlan = planUsesFood(plan, foodId);
       const payload = await api.removeFood(foodId);
       setFoods(payload.foods);
+      await refreshRecipesCatalog();
       removeFromSelection(foodId);
 
       if (shouldResetPlan) {
@@ -485,6 +508,7 @@ function AppShell({ user, onLogout, onNotify }) {
               element={
                 <DashboardPage
                   plan={plan}
+                  recipes={recipesCatalog}
                   onAddToCart={handleAddMealToCart}
                   selectedDate={selectedDate}
                   onDateChange={setSelectedDate}
@@ -532,6 +556,7 @@ function AppShell({ user, onLogout, onNotify }) {
                   items={inventoryItems}
                   catalog={foods}
                   onSaveAmount={handleInventorySave}
+                  onResolvePortion={handleResolveInventoryPortion}
                   busy={inventoryBusy}
                 />
               }

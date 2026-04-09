@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import NumberStepper from "../components/NumberStepper.jsx";
 
-export default function InventoryPage({ items = [], catalog = [], onSaveAmount, busy }) {
+export default function InventoryPage({ items = [], catalog = [], onSaveAmount, onResolvePortion, busy }) {
   const [localAmounts, setLocalAmounts] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFoodId, setSelectedFoodId] = useState("");
   const [newAmount, setNewAmount] = useState(100);
+  const [portionExpression, setPortionExpression] = useState("");
+  const [portionMessage, setPortionMessage] = useState("");
+  const [portionBusy, setPortionBusy] = useState(false);
 
   const activeItems = useMemo(() => items.filter((item) => Number(item.amountGrams) > 0), [items]);
 
@@ -29,7 +32,7 @@ export default function InventoryPage({ items = [], catalog = [], onSaveAmount, 
   }, [catalog, searchTerm]);
 
   async function addItem() {
-    const amount = Math.max(1, Math.round(Number(newAmount) || 0));
+    const amount = Math.max(0.1, Math.round((Number(newAmount) || 0) * 10) / 10);
     if (!selectedFoodId) {
       return;
     }
@@ -40,6 +43,43 @@ export default function InventoryPage({ items = [], catalog = [], onSaveAmount, 
     await onSaveAmount(selectedFoodId, nextAmount);
     setSelectedFoodId("");
     setSearchTerm("");
+    setPortionExpression("");
+    setPortionMessage("");
+  }
+
+  async function resolvePortionExpression() {
+    const text = portionExpression.trim();
+    if (!text) {
+      setPortionMessage("Porsiyon metni bos olamaz.");
+      return;
+    }
+
+    if (typeof onResolvePortion !== "function") {
+      setPortionMessage("Portion resolver su an aktif degil.");
+      return;
+    }
+
+    setPortionBusy(true);
+    setPortionMessage("");
+    try {
+      const resolved = await onResolvePortion(text);
+      const foodId = String(resolved?.food?.id || "").trim();
+      const foodName = String(resolved?.food?.name || "").trim();
+      const grams = Math.max(0.1, Number(resolved?.grams) || 0);
+
+      if (!foodId || !grams) {
+        throw new Error("Porsiyon cozumlenemedi.");
+      }
+
+      setSelectedFoodId(foodId);
+      setSearchTerm(foodName);
+      setNewAmount(Math.round(grams * 10) / 10);
+      setPortionMessage(`${resolved.quantity} ${resolved.unit} ${foodName} = ${Math.round(grams * 10) / 10} g`);
+    } catch (error) {
+      setPortionMessage(error.message || "Porsiyon cozumlenemedi.");
+    } finally {
+      setPortionBusy(false);
+    }
   }
 
   function amountFor(item) {
@@ -63,7 +103,7 @@ export default function InventoryPage({ items = [], catalog = [], onSaveAmount, 
           <div>
             <p className="kicker">My Ingredients</p>
             <h1 className="screen-title">Malzemelerim</h1>
-            <p className="screen-subtitle">Hazir listeden sec, malzemeni gram (g) cinsinden ekle ve yonet.</p>
+            <p className="screen-subtitle">Hazir listeden sec veya porsiyon ifadesiyle ekle: 1 egg, 1 cup rice.</p>
           </div>
         </div>
       </header>
@@ -99,10 +139,10 @@ export default function InventoryPage({ items = [], catalog = [], onSaveAmount, 
           <NumberStepper
             compact
             value={newAmount}
-            min={1}
-            step={1}
+            min={0.1}
+            step={0.1}
             className="inventory-add-stepper"
-            onChange={(next) => setNewAmount(Math.max(1, next))}
+            onChange={(next) => setNewAmount(Math.max(0.1, next))}
             inputAriaLabel="Eklenecek miktar"
             increaseAriaLabel="Miktari arttir"
             decreaseAriaLabel="Miktari azalt"
@@ -112,6 +152,25 @@ export default function InventoryPage({ items = [], catalog = [], onSaveAmount, 
             Ekle
           </button>
         </div>
+
+        <div className="inventory-portion-row">
+          <input
+            type="text"
+            value={portionExpression}
+            onChange={(event) => setPortionExpression(event.target.value)}
+            placeholder="Hizli porsiyon (orn: 1 egg, 2 yumurta, 1 cup rice)"
+            aria-label="Hizli porsiyon"
+          />
+          <button
+            type="button"
+            className="swap-btn"
+            disabled={busy || portionBusy || !portionExpression.trim()}
+            onClick={resolvePortionExpression}
+          >
+            Cozumle
+          </button>
+        </div>
+        {portionMessage ? <p className="inventory-portion-hint">{portionMessage}</p> : null}
       </section>
 
       {activeItems.length === 0 ? (
@@ -145,7 +204,7 @@ export default function InventoryPage({ items = [], catalog = [], onSaveAmount, 
                     compact
                     value={amountFor(item)}
                     min={0}
-                    step={1}
+                    step={0.1}
                     className="inventory-row-stepper"
                     onChange={(next) =>
                       setLocalAmounts((current) => ({

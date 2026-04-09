@@ -67,6 +67,7 @@ function buildDatePills(selectedDate) {
 
 export default function DashboardPage({
   plan,
+  recipes = [],
   onAddToCart,
   selectedDate,
   onDateChange,
@@ -97,7 +98,31 @@ export default function DashboardPage({
         "https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=1200&q=80"
     })) ?? [];
 
-  const meals = useMemo(() => (planMeals.length ? planMeals : dashboardMealFallback), [planMeals]);
+  const recipeMeals = useMemo(
+    () =>
+      recipes.map((recipe) => ({
+        id: recipe.id,
+        title: recipe.title,
+        calories: Math.round(Number(recipe.calories) || 0),
+        protein: Math.round(Number(recipe.protein) || 0),
+        carb: Math.round(Number(recipe.carb) || 0),
+        fat: Math.round(Number(recipe.fat) || 0),
+        image: recipe.image
+      })),
+    [recipes]
+  );
+
+  const meals = useMemo(() => {
+    if (planMeals.length) {
+      return planMeals;
+    }
+
+    if (recipeMeals.length) {
+      return recipeMeals;
+    }
+
+    return dashboardMealFallback;
+  }, [planMeals, recipeMeals]);
 
   const visibleMeals = showAllMeals ? meals : meals.slice(0, 2);
   const datePills = buildDatePills(selectedDate);

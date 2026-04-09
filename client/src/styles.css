@@ -902,6 +902,28 @@ body {
   white-space: nowrap;
 }
 
+.inventory-portion-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.inventory-portion-row input {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  padding: 8px;
+  width: 100%;
+}
+
+.inventory-portion-hint {
+  margin: 2px 0 0;
+  font-size: 0.72rem;
+  color: rgba(243, 246, 255, 0.74);
+}
+
 .inventory-row-stepper {
   width: 150px;
 }

@@ -1,0 +1,157 @@
+{
+  "source": "Verified unified food dataset",
+  "generatedAt": "2026-04-09T00:00:00.000Z",
+  "itemCount": 15,
+  "items": [
+    {
+      "id": "chicken",
+      "name": "Chicken breast (raw)",
+      "type": "protein",
+      "protein": 22.5,
+      "carb": 0,
+      "fat": 2.6,
+      "calories": 120,
+      "defaultPortion": 120
+    },
+    {
+      "id": "chicken_cooked",
+      "name": "Chicken breast (cooked)",
+      "type": "protein",
+      "protein": 31,
+      "carb": 0,
+      "fat": 3.6,
+      "calories": 165,
+      "defaultPortion": 120
+    },
+    {
+      "id": "rice",
+      "name": "Rice (white, cooked)",
+      "type": "carb",
+      "protein": 2.7,
+      "carb": 28,
+      "fat": 0.3,
+      "calories": 130,
+      "defaultPortion": 180
+    },
+    {
+      "id": "rice_raw",
+      "name": "Rice (white, raw)",
+      "type": "carb",
+      "protein": 7.1,
+      "carb": 78,
+      "fat": 0.6,
+      "calories": 360,
+      "defaultPortion": 75
+    },
+    {
+      "id": "egg",
+      "name": "Egg (whole)",
+      "type": "protein",
+      "protein": 13,
+      "carb": 1.1,
+      "fat": 11,
+      "calories": 155,
+      "defaultPortion": 50
+    },
+    {
+      "id": "egg_white",
+      "name": "Egg white",
+      "type": "protein",
+      "protein": 11,
+      "carb": 0.7,
+      "fat": 0.2,
+      "calories": 52,
+      "defaultPortion": 33
+    },
+    {
+      "id": "egg_yolk",
+      "name": "Egg yolk",
+      "type": "fat",
+      "protein": 16,
+      "carb": 3.6,
+      "fat": 27,
+      "calories": 322,
+      "defaultPortion": 17
+    },
+    {
+      "id": "olive_oil",
+      "name": "Olive oil",
+      "type": "fat",
+      "protein": 0,
+      "carb": 0,
+      "fat": 100,
+      "calories": 884,
+      "defaultPortion": 12
+    },
+    {
+      "id": "butter",
+      "name": "Butter",
+      "type": "fat",
+      "protein": 0.9,
+      "carb": 0.1,
+      "fat": 81,
+      "calories": 717,
+      "defaultPortion": 10
+    },
+    {
+      "id": "banana",
+      "name": "Banana",
+      "type": "carb",
+      "protein": 1.1,
+      "carb": 23,
+      "fat": 0.3,
+      "calories": 89,
+      "defaultPortion": 120
+    },
+    {
+      "id": "apple",
+      "name": "Apple",
+      "type": "carb",
+      "protein": 0.3,
+      "carb": 14,
+      "fat": 0.2,
+      "calories": 52,
+      "defaultPortion": 150
+    },
+    {
+      "id": "broccoli",
+      "name": "Broccoli",
+      "type": "carb",
+      "protein": 2.8,
+      "carb": 7,
+      "fat": 0.4,
+      "calories": 34,
+      "defaultPortion": 100
+    },
+    {
+      "id": "salmon",
+      "name": "Salmon",
+      "type": "protein",
+      "protein": 20,
+      "carb": 0,
+      "fat": 13,
+      "calories": 208,
+      "defaultPortion": 120
+    },
+    {
+      "id": "beef_lean",
+      "name": "Beef (lean)",
+      "type": "protein",
+      "protein": 26,
+      "carb": 0,
+      "fat": 15,
+      "calories": 250,
+      "defaultPortion": 120
+    },
+    {
+      "id": "oats",
+      "name": "Oats",
+      "type": "carb",
+      "protein": 16.9,
+      "carb": 66,
+      "fat": 6.9,
+      "calories": 389,
+      "defaultPortion": 80
+    }
+  ]
+}

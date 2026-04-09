@@ -22,11 +22,13 @@ function getPool() {
 }
 
 function sanitizeAmount(value) {
-  const parsed = Math.round(Number(value));
+  const parsed = Number(value);
   if (!Number.isFinite(parsed)) {
     return 0;
   }
-  return Math.max(0, Math.min(25000, parsed));
+
+  const clipped = Math.max(0, Math.min(25000, parsed));
+  return Math.round(clipped * 10) / 10;
 }
 
 export async function initializeInventoryStore() {
@@ -39,10 +41,16 @@ export async function initializeInventoryStore() {
     CREATE TABLE IF NOT EXISTS user_inventory (
       user_id TEXT NOT NULL,
       food_id TEXT NOT NULL,
-      amount_grams INTEGER NOT NULL,
+      amount_grams DOUBLE PRECISION NOT NULL,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (user_id, food_id)
     )
+  `);
+
+  await db.query(`
+    ALTER TABLE user_inventory
+    ALTER COLUMN amount_grams TYPE DOUBLE PRECISION
+    USING amount_grams::double precision
   `);
 }
 

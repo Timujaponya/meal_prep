@@ -18,6 +18,7 @@ import { getInventoryMap, listUserInventory, upsertInventoryItem } from "../data
 import { analyzeCheckout, normalizeCartItems } from "../lib/checkout.js";
 import { createFoodItem, getFoodsByIds, listFoods, removeFoodItemById, updateFoodItem } from "../data/foods.js";
 import { buildMealPlan, swapMealItem } from "../lib/generator.js";
+import { resolveIngredientQuery, resolvePortionExpression } from "../lib/ingredientNormalization.js";
 import { requireAuth, requireRole } from "../middleware/auth.js";
 import { dailyMacroTargets, estimateCalories, roundMacros } from "../lib/macros.js";
 import { buildShoppingList } from "../lib/shoppingList.js";
@@ -45,8 +46,57 @@ planRouter.get("/recipes", async (_req, res) => {
   }
 });
 
+planRouter.post("/foods/resolve", async (req, res) => {
+  try {
+    const query = String(req.body?.query || "").trim();
+    const foods = await listFoods();
+    const matched = resolveIngredientQuery(query, foods, { strict: false });
+
+    res.json({
+      query,
+      match: matched
+        ? {
+            food: matched.food,
+            matchedBy: matched.matchedBy
+          }
+        : null
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+planRouter.post("/foods/portion-resolve", async (req, res) => {
+  try {
+    const expression = String(req.body?.expression || "").trim();
+    const foods = await listFoods();
+    const resolved = resolvePortionExpression(expression, foods);
+
+    if (!resolved) {
+      throw new Error("Portion ifadesi cozumlenemedi. Ornek: '1 egg' veya '1 cup rice'.");
+    }
+
+    res.json({ expression, resolved });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 planRouter.post("/foods", requireRole("admin"), async (req, res) => {
   try {
+    const currentFoods = await listFoods();
+    const matched = resolveIngredientQuery(req.body?.name, currentFoods, { strict: true });
+
+    if (matched) {
+      res.status(200).json({
+        food: matched.food,
+        foods: currentFoods,
+        deduplicated: true,
+        matchedBy: matched.matchedBy
+      });
+      return;
+    }
+
     const nextFood = await createFoodItem(req.body);
     const foods = await listFoods();
     res.status(201).json({ food: nextFood, foods });
